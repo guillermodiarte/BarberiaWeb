@@ -1,54 +1,25 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Scissors, Sword as Razor, Sparkles, Crown, Clock, Star } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { toast } from '@/components/ui/use-toast';
+import { Scissors, Sparkles, Crown, Clock, Star, Check } from 'lucide-react';
+import { api } from '../api';
 
 const Services = () => {
-  const handleBooking = () => {
-    toast({
-      title: "🚧 Esta función no está implementada aún",
-      description: "¡Pero no te preocupes! Puedes solicitarla en tu próximo prompt! 🚀"
-    });
-  };
+  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const services = [
-    {
-      icon: Scissors,
-      title: "Corte Clásico",
-      description: "Cortes tradicionales con técnicas modernas para un look atemporal",
-      price: "$25",
-      duration: "45 min",
-      features: ["Lavado incluido", "Peinado", "Consulta personalizada"]
-    },
-    {
-      icon: Razor,
-      title: "Afeitado Premium",
-      description: "Afeitado tradicional con navaja caliente y toallas aromáticas",
-      price: "$35",
-      duration: "60 min",
-      features: ["Toalla caliente", "Aceites premium", "Masaje facial"]
-    },
-    {
-      icon: Crown,
-      title: "Corte + Barba",
-      description: "Servicio completo para el caballero moderno",
-      price: "$45",
-      duration: "90 min",
-      features: ["Corte personalizado", "Arreglo de barba", "Tratamiento capilar"]
-    },
-    {
-      icon: Sparkles,
-      title: "Tratamiento VIP",
-      description: "Experiencia de lujo completa con todos nuestros servicios",
-      price: "$80",
-      duration: "120 min",
-      features: ["Todos los servicios", "Masaje", "Bebida premium"]
-    }
-  ];
+  useEffect(() => {
+    api.getServices(false)
+      .then(res => {
+        if (res && res.length > 0) {
+          setServices(res);
+        }
+      })
+      .catch(err => console.error('Error cargando servicios:', err))
+      .finally(() => setLoading(false));
+  }, []);
 
   return (
-    <section id="servicios" className="py-20 px-4">
+    <section id="servicios" className="py-20 px-4 bg-slate-900/60">
       <div className="container mx-auto max-w-6xl">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -56,67 +27,88 @@ const Services = () => {
           transition={{ duration: 0.8 }}
           className="text-center mb-16"
         >
-          <h2 className="font-heading text-4xl md:text-5xl font-bold mb-6">
+          <span className="text-amber-400 font-semibold text-xs uppercase tracking-widest px-3 py-1 bg-amber-500/10 rounded-full border border-amber-500/20">
+            Tarifas Oficiales Actualizadas
+          </span>
+          <h2 className="font-heading text-4xl md:text-5xl font-bold mb-4 mt-3">
             <span className="text-white">Nuestros</span>{' '}
-            <span className="gradient-text">Servicios</span>
+            <span className="gradient-text">Servicios & Combos</span>
           </h2>
-          <p className="text-xl text-gray-300 max-w-2xl mx-auto">
-            Ofrecemos una gama completa de servicios de barbería premium, 
-            diseñados para el hombre moderno que valora la calidad y el estilo.
+          <p className="text-slate-400 text-lg max-w-2xl mx-auto">
+            Cortes modernos, afeitado clásico a navaja y combos promocionales adaptados al caballero exigente.
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {services.map((service, index) => (
             <motion.div
-              key={service.title}
+              key={service.id}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: index * 0.1 }}
-              whileHover={{ y: -10 }}
-              className="glass-effect rounded-xl p-6 hover:shadow-2xl transition-all duration-300"
+              transition={{ duration: 0.5, delay: index * 0.1 }}
+              whileHover={{ y: -6 }}
+              className={`p-8 rounded-3xl border transition-all flex flex-col justify-between ${
+                service.is_combo
+                  ? 'bg-gradient-to-br from-amber-950/40 via-slate-900 to-slate-900 border-amber-500/50 shadow-xl shadow-amber-950/30'
+                  : 'bg-slate-900/80 border-slate-800'
+              }`}
             >
-              <div className="text-center mb-6">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-amber-500 to-amber-600 rounded-full mb-4">
-                  <service.icon className="h-8 w-8 text-black" />
-                </div>
-                <h3 className="font-heading text-xl font-bold text-white mb-2">
-                  {service.title}
-                </h3>
-                <p className="text-gray-300 text-sm mb-4">
-                  {service.description}
-                </p>
-              </div>
-
-              <div className="space-y-3 mb-6">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-400">Precio:</span>
-                  <span className="font-bold text-amber-400 text-lg">{service.price}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-400 flex items-center">
-                    <Clock className="h-4 w-4 mr-1" />
-                    Duración:
-                  </span>
-                  <span className="text-white">{service.duration}</span>
-                </div>
-              </div>
-
-              <div className="space-y-2 mb-6">
-                {service.features.map((feature, idx) => (
-                  <div key={idx} className="flex items-center text-sm text-gray-300">
-                    <Star className="h-3 w-3 text-amber-400 mr-2" />
-                    {feature}
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 bg-amber-500/10 rounded-2xl border border-amber-500/30">
+                    {service.is_combo ? (
+                      <Crown className="h-6 w-6 text-amber-400" />
+                    ) : (
+                      <Scissors className="h-6 w-6 text-amber-400" />
+                    )}
                   </div>
-                ))}
+                  {service.is_combo && (
+                    <span className="px-3 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[11px] font-extrabold uppercase tracking-wider rounded-full">
+                      Combo Ahorro
+                    </span>
+                  )}
+                </div>
+
+                <h3 className="font-heading text-xl font-bold text-white mb-2">
+                  {service.name}
+                </h3>
+                <p className="text-slate-400 text-xs mb-4 leading-relaxed">
+                  {service.description || 'Atención personalizada y productos de primera línea.'}
+                </p>
+
+                {service.is_combo && service.combo_items_json && (
+                  <div className="mb-4 p-3 bg-slate-950/70 rounded-xl border border-slate-800 text-xs text-slate-300">
+                    <span className="text-[10px] uppercase font-bold text-amber-400 block mb-1">Incluye:</span>
+                    {(() => {
+                      try {
+                        const items = JSON.parse(service.combo_items_json);
+                        return items.join(' + ');
+                      } catch {
+                        return service.combo_items_json;
+                      }
+                    })()}
+                  </div>
+                )}
               </div>
 
-              <Button
-                onClick={handleBooking}
-                className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-black font-semibold"
-              >
-                Reservar
-              </Button>
+              <div className="pt-4 border-t border-slate-800">
+                <div className="flex items-baseline justify-between mb-4">
+                  <span className="text-2xl font-extrabold text-amber-400 font-heading">
+                    ${service.price?.toLocaleString('es-AR')} <span className="text-xs font-normal text-slate-400">ARS</span>
+                  </span>
+                  <div className="flex items-center text-slate-400 text-xs">
+                    <Clock className="h-3.5 w-3.5 mr-1 text-amber-400" />
+                    <span>{service.duration_minutes} min</span>
+                  </div>
+                </div>
+
+                <a
+                  href="#reservas"
+                  className="w-full block text-center py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold rounded-xl text-xs transition-all shadow-md shadow-amber-500/20"
+                >
+                  Reservar este Servicio
+                </a>
+              </div>
             </motion.div>
           ))}
         </div>

@@ -19,3 +19,10 @@ yarn-error.log*
 
 # Caché de Vite
 .vite/
+
+# Python
+backend/venv/
+*/__pycache__/
+*.pyc
+*.pyo
+*.db

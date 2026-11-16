@@ -1,41 +1,620 @@
-# Barberia Web App
+# 💈 BarberShop Elite — Sistema Integral de Gestión para Barberías
 
-Bienvenido al repositorio del sitio web de Barberia. Este proyecto es una aplicación web moderna construida con Vite y React, diseñada para ofrecer una experiencia de usuario premium para una barbería.
+> **Stack:** React 18 + Vite · FastAPI + SQLite · TailwindCSS · JWT Auth · API-First
 
-## 📋 Descripción
+Sistema completo de gestión de alta gama para barberías. Incluye una página web pública moderna con estética oscura, panel de administración seguro, backend en Python con FastAPI y SQLAlchemy, y arquitectura API-First lista para alimentar una app móvil futura.
 
-La aplicación permite a los usuarios ver información sobre la barbería, conocer al equipo, y ver los servicios ofrecidos.
+---
 
-## 🚀 Cómo ejecutar en local
+## 📋 Tabla de Contenidos
 
-Sigue estos pasos para ejecutar el proyecto en tu máquina local:
+1. [Vista General de la Página Pública](#-página-pública)
+2. [Panel de Administración](#-panel-de-administración)
+3. [Configuración de Marca](#-personalización-de-marca-env)
+4. [Instalación y Puesta en Marcha](#-instalación-y-desarrollo-local)
+5. [Despliegue en Producción (VPS)](#-despliegue-en-producción-vps)
+6. [Gestión de Medios e Imágenes](#-gestión-de-medios-e-imágenes)
+7. [Seguridad y Rutas de Acceso](#-seguridad-y-rutas-de-acceso)
+8. [Credenciales de Prueba](#-credenciales-de-prueba)
+9. [Arquitectura Técnica](#-arquitectura-técnica)
+10. [API Reference](#-api-reference)
 
-### Prerrequisitos
-- Node.js instalado en tu sistema.
+---
 
-### Instalación y Ejecución
+## 🌐 Página Pública
 
-1.  **Instalar dependencias:**
-    Abre una terminal en la carpeta del proyecto y ejecuta:
-    ```bash
-    npm install
-    ```
+La página pública es completamente **responsiva** (mobile-first), carga rápido y cada sección puede habilitarse o deshabilitarse individualmente desde el panel de administración. Las secciones deshabilitadas desaparecen tanto del menú de navegación como del contenido de la página.
 
-2.  **Iniciar el servidor de desarrollo:**
-    Una vez instaladas las dependencias, inicia el servidor con:
-    ```bash
-    npm run dev
-    ```
+### Secciones de la Página
 
-3.  **Abrir en el navegador:**
-    El servidor iniciará generalmente en `http://localhost:5173`. Abre esa dirección en tu navegador para ver la aplicación.
+| ID Sección | Descripción | Configurable desde Admin |
+|------------|-------------|:---:|
+| **Inicio / Hero** | Banner animado con slider de fotos, título, subtítulo y botón de acción | ✅ |
+| **Servicios** | Catálogo de cortes, barba, combos y promociones con precios en ARS | ✅ |
+| **Reservar Turno** | Formulario de reserva online (desaparece cuando está pausado) | ✅ |
+| **Puntos Elite** | Consulta de puntos de fidelización ingresando DNI o teléfono | ✅ |
+| **Historia** | Sección "Nuestra Historia" con texto institucional | ✅ |
+| **Galería** | Mosaico de fotos del salón y trabajos realizados | ✅ |
+| **Equipo** | Cards del equipo de barberos con foto y especialidad | ✅ |
+| **Contacto** | Mapa de Google Maps embebido, WhatsApp, horarios e info de contacto | ✅ |
 
-## 📸 Screenshots
+### Menú de Navegación
 
-Aquí hay algunas imágenes de cómo se ve la página:
+- **Totalmente transparente** al inicio de la página
+- **Efecto glassmorphism** (`bg-slate-950/80 + backdrop-blur`) al hacer scroll
+- El clic en cada ítem del menú activa un **scroll suave** hasta la sección con offset de 70px para evitar que el header tape el contenido
+- El botón **"Reservar Cita"** solo aparece en el menú si las reservas online están habilitadas en la configuración
+- Las secciones deshabilitadas se eliminan automáticamente del menú
 
-### Página de Inicio
-![Home Page](screenshots/home.png)
+### Banner / Slider
 
-### Nuestro Equipo y Características
-![Features Section](screenshots/features.png)
+- Slider de imágenes a pantalla completa con animación de fade + zoom suave
+- Botones de navegación (◀ ▶) y puntos de paginación en la parte inferior
+- El intervalo de transición es configurable desde el panel admin (en segundos)
+- Si hay una sola imagen, los controles de navegación se ocultan automáticamente
+- Las imágenes del banner se suben desde el admin, se convierten a **WebP** y se redimensionan a 1920px de ancho máximo
+
+### Página 404
+
+Cualquier URL que no exista muestra una página de error elegante con:
+- Número 404 en dorado con animación
+- Botón "Volver al Inicio"
+- Botón "Contactar por WhatsApp"
+
+---
+
+## 🔧 Panel de Administración
+
+### Acceso Seguro
+
+| Ruta | Función |
+|------|---------|
+| `/gestion-elite` | Panel principal (redirige a login si no hay sesión) |
+| `/gestion-elite/login` | Formulario de login del administrador |
+| `/acceso-elite` | Alias alternativo (mismo destino) |
+| `/admin`, `/gestion`, `/panel` | **Bloqueadas** — redirigen al inicio público |
+
+> ⚠️ **Nunca compartas la URL del panel.** Las rutas `/admin` y similares están bloqueadas por código. Solo `/gestion-elite` permite acceder al sistema.
+
+### Módulos del Panel
+
+#### 1. 📊 Resumen General (Dashboard)
+- Métricas del día: ingresos totales, cortes registrados, comisiones y gastos
+- Alertas de inventario bajo stock
+- Accesos rápidos a las acciones más frecuentes
+
+#### 2. ✂️ Registrar Cortes (CRM)
+- Registra cada servicio realizado: qué barbero, qué servicio, quién cobró (barbero o admin), canal de pago (efectivo / transferencia)
+- El sistema calcula automáticamente la comisión del barbero y actualiza el saldo de puntos del cliente
+- Accesible para todos los barberos y administradores
+
+#### 3. 💰 Caja & Arqueo _(solo Admin)_
+- Cierre de caja diario, semanal o mensual
+- Desglose de efectivo en mostrador vs. transferencias digitales
+- Cálculo automático de comisiones y alquileres de barberos
+- Historial de cierres anteriores con detalle
+
+#### 4. 🛠️ Servicios & Combos _(solo Admin)_
+- Alta, edición y baja de servicios individuales y combos
+- **Actualización masiva por inflación:** aumenta todos los precios en un % con redondeo inteligente a centenas
+- Gestión de combos con inclusión de múltiples servicios
+
+#### 5. 👥 Barberos & Esquemas _(solo Admin)_
+- Alta, edición y baja de barberos
+- Dos modelos de negocio soportados:
+  - **Comisión:** el barbero recibe un % de cada corte (ej. 50%)
+  - **Alquiler Fijo:** el barbero paga un monto mensual fijo al dueño
+- Activación/desactivación de acceso al sistema (cancela sesión en tiempo real)
+
+#### 6. 📦 Inventario & Stock
+- Gestión de insumos internos (shampoo, cera, etc.) con descuento automático opcional al registrar un corte
+- Alerta de stock bajo configurable
+- Productos de reventa al cliente con comisión para el barbero vendedor
+
+#### 7. 🛒 Ventas de Productos
+- Registro de ventas de productos al cliente
+- Vinculación con barbero vendedor para cálculo de comisión
+
+#### 8. 🧾 Gastos del Salón _(solo Admin)_
+- Registro de gastos operativos (alquiler, servicios, insumos, etc.)
+- Integración con el arqueo de caja
+
+#### 9. 🏆 Clientes (Fidelización)
+- Consulta y gestión de clientes por DNI o teléfono
+- Visualización de historial de puntos y canjes
+
+#### 10. 📅 Reservas & Turnos
+- Gestión de reservas online recibidas desde la web pública
+- Switch para pausar / reactivar las reservas online
+- Visualización de seña abonada (si aplica)
+
+#### 11. 🖼️ Galería & Medios _(solo Admin)_
+- Explorador de archivos por carpeta: Banner, Galería Web, Equipo, Videos, Sistema (logos)
+- Subida de imágenes y videos con conversión automática a WebP / WebM
+- Vista previa en grilla, copia de URL, eliminación individual
+
+#### 12. ⚙️ Configuración
+
+La configuración tiene sub-secciones:
+
+| Sub-sección | Descripción | Rol requerido |
+|-------------|-------------|:---:|
+| **🎨 Estilos & Temas** | Selector de 5 paletas de colores para el sitio web | SuperAdmin |
+| **👁️ Secciones de la Web** | Habilitar/deshabilitar secciones de la página pública | Admin |
+| **🏪 Barbería y Ubicación** | Nombre, teléfono, dirección, URL de Google Maps | Admin |
+| **🖼️ Banner & Slider** | Gestión de slides del hero: imagen, título, subtítulo, intervalo | Admin |
+| **⭐ Fidelización y Puntos** | Puntos por cada $100 ARS, bonos, canjes | Admin |
+| **💳 Cobros y Finanzas** | Alias/CBU para transferencias de señas, comisiones | Admin |
+| **📅 Reservas y Turnos** | Switch ON/OFF reservas online, seña requerida | Admin |
+
+### Temas Visuales Disponibles
+
+| Tema | Paleta | Descripción |
+|------|--------|-------------|
+| 💈 **Poste de Barbero Tradicional** | Rojo · Blanco · Azul | Clásico vintage con barra tricolor animada |
+| 👑 **Gold & Black Elite** | Dorado · Negro · Gris | Elegancia y lujo (tema por defecto) |
+| 🌿 **Emerald & British Leather** | Esmeralda · Cuero · Oscuro | Estilo club inglés |
+| ⚡ **Sapphire & Cyber Steel** | Azul eléctrico · Acero | Moderno y tecnológico |
+| 🍷 **Ruby Burgundy & Rose Gold** | Borgoña · Oro rosa | Boutique y exclusivo |
+
+---
+
+## ⚙️ Personalización de Marca (`.env`)
+
+Todo el nombre y datos de la barbería están centralizados en el archivo `.env`. Para adaptar el sistema a un cliente diferente, **solo cambiás este archivo** y los cambios se propagan a toda la web y al panel admin:
+
+```env
+# ==============================================================================
+# DATOS DE LA MARCA (Modificar aquí para cada cliente)
+# ==============================================================================
+VITE_BARBERSHOP_NAME="BarberShop Elite"
+BARBERSHOP_NAME="BarberShop Elite"
+
+VITE_BARBERSHOP_TAGLINE="Peluquería Masculina de Lujo & Cuidado Personal"
+BARBERSHOP_TAGLINE="Peluquería Masculina de Lujo & Cuidado Personal"
+
+VITE_BARBERSHOP_PHONE="+54 9 11 5555-1234"
+BARBERSHOP_PHONE="+54 9 11 5555-1234"
+
+VITE_BARBERSHOP_ADDRESS="Av. Santa Fe 2450, CABA, Argentina"
+BARBERSHOP_ADDRESS="Av. Santa Fe 2450, CABA, Argentina"
+
+VITE_BARBERSHOP_EMAIL="contacto@barbershopelite.com"
+BARBERSHOP_EMAIL="contacto@barbershopelite.com"
+
+VITE_BARBERSHOP_INSTAGRAM="barbershop.elite"
+BARBERSHOP_INSTAGRAM="barbershop.elite"
+
+VITE_BARBERSHOP_ALIAS="barbershop.elite.mp"
+BARBERSHOP_ALIAS="barbershop.elite.mp"
+
+VITE_CURRENCY="ARS"
+CURRENCY="ARS"
+
+# ==============================================================================
+# CREDENCIALES INICIALES
+# ==============================================================================
+ADMIN_EMAIL="admin@barbershop.com"
+ADMIN_PASSWORD="admin123"
+ADMIN_NAME="Nombre del Dueño"
+
+BARBER1_NAME="Marcos Toledo"
+BARBER1_EMAIL="marcos@barbershop.com"
+BARBER1_PASSWORD="barbero123"
+BARBER1_COMMISSION=50.0
+
+# (ver .env completo para más barberos)
+
+# ==============================================================================
+# CONFIGURACIÓN TÉCNICA
+# ==============================================================================
+JWT_SECRET_KEY="CAMBIA_ESTO_EN_PRODUCCION_clave_larga_y_segura"
+DATABASE_URL="sqlite:///./barbershop.db"
+PORT=8000
+HOST="0.0.0.0"
+```
+
+> 🔐 **Importante:** Cambiá siempre `JWT_SECRET_KEY` antes de llevar a producción. Usá una cadena aleatoria larga.
+
+---
+
+## 🚀 Instalación y Desarrollo Local
+
+### Requisitos
+
+- **Node.js** ≥ 18
+- **Python** ≥ 3.10
+- `pip`, `venv`
+
+### Pasos
+
+```bash
+# 1. Clonar el repositorio
+git clone <URL_DEL_REPO> barberia
+cd barberia
+
+# 2. Instalar dependencias de Node
+npm install
+
+# 3. Crear entorno virtual de Python e instalar dependencias
+python3 -m venv backend/venv
+backend/venv/bin/pip install -r backend/requirements.txt
+
+# 4. Instalar Pillow (para conversión WebP de imágenes)
+backend/venv/bin/pip install Pillow
+
+# 5. Copiar y editar el .env
+cp .env.example .env
+# Editar con tus datos
+
+# 6. Sembrar la base de datos con usuarios demo y servicios de ejemplo
+npm run seed
+
+# 7. Iniciar el entorno de desarrollo (frontend + backend juntos)
+npm run dev
+```
+
+### URLs en desarrollo
+
+| Servicio | URL |
+|---------|-----|
+| Página web pública | http://localhost:5173 |
+| Panel de administración | http://localhost:5173/gestion-elite |
+| Login admin | http://localhost:5173/gestion-elite/login |
+| Backend API | http://127.0.0.1:8000 |
+| Documentación Swagger | http://127.0.0.1:8000/docs |
+
+### Scripts disponibles
+
+| Comando | Descripción |
+|---------|-------------|
+| `npm run dev` | Inicia frontend (Vite) y backend (uvicorn) simultáneamente |
+| `npm run dev:frontend` | Solo el servidor Vite (puerto 5173) |
+| `npm run dev:backend` | Solo el servidor FastAPI (puerto 8000) con --reload |
+| `npm run build` | Compila el frontend para producción en `dist/` |
+| `npm run serve` | Sirve la app compilada en producción (puerto 8000) |
+| `npm run seed` | Siembra la base de datos con datos de ejemplo |
+
+---
+
+## 🌍 Despliegue en Producción (VPS)
+
+El backend FastAPI está configurado para servir directamente los archivos compilados de React (`dist/`). En producción **solo corrés un proceso en un solo puerto**.
+
+```bash
+# 1. Clonar en el VPS
+git clone <URL_DEL_REPO> barberia
+cd barberia
+
+# 2. Instalar dependencias
+python3 -m venv backend/venv
+backend/venv/bin/pip install -r backend/requirements.txt
+backend/venv/bin/pip install Pillow
+npm install
+
+# 3. Configurar variables de entorno
+nano .env
+# → Cambiar JWT_SECRET_KEY por una clave segura
+# → Cambiar contraseñas de admin y barberos
+
+# 4. Sembrar la base de datos
+npm run seed
+
+# 5. Compilar el frontend
+npm run build
+
+# 6. Iniciar en producción
+npm run serve
+# O con PM2 para mantenerlo activo:
+pm2 start "backend/venv/bin/uvicorn backend.app.main:app --host 0.0.0.0 --port 80" --name "barberia"
+pm2 save
+pm2 startup
+```
+
+Una vez levantado:
+- `http://TU_IP_O_DOMINIO/` → Página web pública
+- `http://TU_IP_O_DOMINIO/gestion-elite/login` → Panel de administración
+- `http://TU_IP_O_DOMINIO/api/...` → API REST (misma instancia, sin CORS)
+
+> 💡 **Recomendado:** Poner Nginx como reverse proxy delante para manejar SSL (HTTPS), dominios y archivos estáticos servidos de forma eficiente.
+
+### Nginx (ejemplo básico)
+
+```nginx
+server {
+    listen 80;
+    server_name tudominio.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        client_max_body_size 50M;
+    }
+}
+```
+
+---
+
+## 🖼️ Gestión de Medios e Imágenes
+
+### Estructura de Carpetas `uploads/`
+
+```
+uploads/
+├── banner/     → Imágenes del hero/slider (max 1920px, WebP)
+├── galeria/    → Fotos de la galería web (max 1400px, WebP)
+├── equipo/     → Fotos del equipo de barberos (max 800px, WebP)
+├── sistema/    → Logos, favicon e imágenes del sistema (max 512px, WebP)
+└── videos/     → Videos del salón (convertidos a WebM)
+```
+
+### Proceso de Optimización Automática
+
+Cuando subís una imagen desde el panel de administración:
+
+1. ✅ Se corrige la orientación automáticamente (EXIF)
+2. ✅ Se redimensiona proporcionalmente según la carpeta destino
+3. ✅ Se convierte a formato **WebP** (imágenes) o **WebM** (videos)
+4. ✅ Se guarda con nombre único basado en timestamp
+5. ✅ Se devuelve la URL para usar en el sistema
+
+> Los formatos WebP/WebM reducen el tamaño hasta un 40-70% respecto a JPG/PNG/MP4, logrando cargas más rápidas.
+
+### Desde el Panel Admin
+
+- **Configuración → Banner & Slider:** Subir/reemplazar fotos del hero
+- **Galería & Medios:** Explorar, subir y eliminar archivos por carpeta
+
+---
+
+## 🔐 Seguridad y Rutas de Acceso
+
+### Rutas de Admin Protegidas
+
+```
+/gestion-elite         → Panel admin (requiere login)
+/gestion-elite/login   → Formulario de login
+/acceso-elite          → Alias alternativo
+/acceso-elite/login    → Alias alternativo de login
+```
+
+### Rutas Bloqueadas (redirigen al inicio)
+
+```
+/admin    → Redirige a /
+/gestion  → Redirige a /
+/panel    → Redirige a /
+```
+
+### Rutas Desconocidas
+
+Cualquier URL que no exista muestra la **página 404** con opción de volver al inicio o contactar por WhatsApp.
+
+### Autenticación
+
+- **JWT Bearer Token** con expiración configurable
+- Token almacenado en `localStorage` (persiste entre pestañas y reinicios del browser)
+- Si el admin desactiva un usuario, su sesión se invalida en el próximo request
+- El ErrorBoundary captura errores JS en runtime y ofrece limpieza de sesión
+
+### Control de Acceso por Rol (RBAC)
+
+| Función | Barbero | Admin | SuperAdmin |
+|---------|:---:|:---:|:---:|
+| Registrar cortes | ✅ | ✅ | ✅ |
+| Ver inventario | ✅ | ✅ | ✅ |
+| Ventas productos | ✅ | ✅ | ✅ |
+| Turnos y reservas | ✅ | ✅ | ✅ |
+| Caja & arqueo | ❌ | ✅ | ✅ |
+| Servicios & combos | ❌ | ✅ | ✅ |
+| Gestión barberos | ❌ | ✅ | ✅ |
+| Gastos del salón | ❌ | ✅ | ✅ |
+| Galería & medios | ❌ | ✅ | ✅ |
+| Configuración | ❌ | ✅ | ✅ |
+| Cambiar tema visual | ❌ | ❌ | ✅ |
+
+---
+
+## 🔑 Credenciales de Prueba
+
+El sistema incluye datos sembrados automáticamente al ejecutar `npm run seed`:
+
+| Rol | Email | Contraseña | Esquema |
+|-----|-------|------------|---------|
+| **SuperAdmin** | `guillermo.diarte@gmail.com` | *(configurado)* | Acceso total + temas |
+| **Admin / Dueño** | `admin@barbershop.com` | `admin123` | Acceso total sin temas |
+| **Barbero 1** | `marcos@barbershop.com` | `barbero123` | Comisión 50% |
+| **Barbero 2** | `lucas@barbershop.com` | `barbero123` | Comisión 45% |
+| **Barbero 3** | `diego@barbershop.com` | `barbero123` | Alquiler fijo $120.000 ARS/mes |
+
+> En la pantalla de login hay botones de **acceso rápido de demo** para ingresar con 1 clic durante el desarrollo.
+
+---
+
+## 🏗️ Arquitectura Técnica
+
+### Stack Completo
+
+```
+┌─────────────────────────────────────────────────────┐
+│  FRONTEND (React 18 + Vite)                         │
+│  ┌──────────────────┐  ┌──────────────────────────┐ │
+│  │  Página Pública  │  │   Panel Administración   │ │
+│  │  (SPA pública)   │  │   (SPA privada con RBAC) │ │
+│  └──────────────────┘  └──────────────────────────┘ │
+│  TailwindCSS · Framer Motion · Lucide Icons · shadcn │
+└──────────────────────────┬──────────────────────────┘
+                           │ /api/* (proxy Vite en dev)
+                           │ (mismo proceso en prod)
+┌──────────────────────────▼──────────────────────────┐
+│  BACKEND (FastAPI + SQLAlchemy)                     │
+│  ┌────────────────────────────────────────────────┐ │
+│  │  API REST JWT · 14 Routers · Pydantic Schemas  │ │
+│  └────────────────────────────────────────────────┘ │
+│  Python 3.10+ · uvicorn · python-jose · passlib    │
+└──────────────────────────┬──────────────────────────┘
+                           │
+┌──────────────────────────▼──────────────────────────┐
+│  BASE DE DATOS (SQLite)                             │
+│  barbershop.db — fácil de migrar a PostgreSQL       │
+└─────────────────────────────────────────────────────┘
+```
+
+### Estructura de Archivos
+
+```
+Barberia/
+├── backend/
+│   ├── app/
+│   │   ├── main.py           ← FastAPI app + CORS + static files
+│   │   ├── models.py         ← Modelos SQLAlchemy (ORM)
+│   │   ├── schemas.py        ← Schemas Pydantic (validación)
+│   │   ├── auth.py           ← JWT + dependencias de autenticación
+│   │   ├── database.py       ← Conexión SQLite
+│   │   ├── utils.py          ← Helpers
+│   │   └── routers/
+│   │       ├── auth.py           ← Login / refresh token
+│   │       ├── services.py       ← Servicios & combos
+│   │       ├── barbers.py        ← Gestión de barberos
+│   │       ├── service_records.py← Registro de cortes (CRM core)
+│   │       ├── inventory.py      ← Inventario & stock
+│   │       ├── product_sales.py  ← Ventas de productos
+│   │       ├── expenses.py       ← Gastos del salón
+│   │       ├── cash_closing.py   ← Arqueo de caja
+│   │       ├── customers.py      ← Clientes & fidelización
+│   │       ├── rewards.py        ← Sistema de puntos
+│   │       ├── bookings.py       ← Reservas online
+│   │       ├── settings.py       ← Configuración del sistema
+│   │       ├── stats.py          ← Dashboard & métricas
+│   │       └── media.py          ← Subida/gestión de medios
+│   ├── seed.py               ← Script de datos iniciales
+│   ├── requirements.txt
+│   └── venv/
+├── src/
+│   ├── App.jsx               ← Router principal + rutas protegidas
+│   ├── main.jsx              ← Entry point React
+│   ├── api.js                ← Cliente HTTP centralizado
+│   ├── config.js             ← Variables de marca desde .env
+│   ├── index.css             ← Estilos globales + scroll suave
+│   ├── components/
+│   │   ├── Header.jsx        ← Navegación responsiva + scroll suave
+│   │   ├── Hero.jsx          ← Slider/banner principal
+│   │   ├── Services.jsx      ← Catálogo de servicios
+│   │   ├── BookingSection.jsx← Reservas online
+│   │   ├── LoyaltyCheckSection.jsx ← Consulta de puntos
+│   │   ├── About.jsx         ← Historia de la barbería
+│   │   ├── Gallery.jsx       ← Galería de fotos
+│   │   ├── Team.jsx          ← Equipo de barberos
+│   │   ├── Contact.jsx       ← Contacto + Google Maps embed
+│   │   ├── Footer.jsx        ← Pie de página
+│   │   └── NotFound.jsx      ← Página 404
+│   ├── admin/
+│   │   ├── AdminLayout.jsx   ← Sidebar + navegación admin
+│   │   ├── AdminLogin.jsx    ← Formulario de login
+│   │   └── tabs/
+│   │       ├── DashboardTab.jsx
+│   │       ├── CutsTab.jsx
+│   │       ├── CashClosingTab.jsx
+│   │       ├── ServicesTab.jsx
+│   │       ├── BarbersTab.jsx
+│   │       ├── InventoryTab.jsx
+│   │       ├── SalesTab.jsx
+│   │       ├── ExpensesTab.jsx
+│   │       ├── LoyaltyTab.jsx
+│   │       ├── BookingsTab.jsx
+│   │       ├── GalleryTab.jsx
+│   │       └── SettingsTab.jsx
+│   └── context/
+│       ├── AuthContext.jsx   ← Estado de sesión JWT global
+│       └── ThemeContext.jsx  ← Tema visual + secciones + banner
+├── uploads/
+│   ├── banner/               ← Fotos del hero (WebP, max 1920px)
+│   ├── galeria/              ← Galería web (WebP, max 1400px)
+│   ├── equipo/               ← Fotos de barberos (WebP, max 800px)
+│   ├── sistema/              ← Logos & favicon (WebP, max 512px)
+│   └── videos/               ← Videos (WebM)
+├── dist/                     ← Build de producción (generado)
+├── .env                      ← Variables de entorno (NO commitear)
+├── vite.config.js
+├── tailwind.config.js
+└── package.json
+```
+
+---
+
+## 📡 API Reference
+
+La documentación interactiva completa (Swagger UI) está disponible en:
+- Desarrollo: http://127.0.0.1:8000/docs
+- Producción: http://TU_DOMINIO/docs
+
+### Endpoints Principales
+
+| Módulo | Prefijo | Auth requerida |
+|--------|---------|:--------------:|
+| Autenticación | `/api/auth` | Pública (login) |
+| Configuración pública | `/api/settings/public` | ❌ Pública |
+| Configuración admin | `/api/settings` | ✅ Admin |
+| Servicios | `/api/services` | ✅ |
+| Barberos | `/api/barbers` | ✅ Admin |
+| Cortes / CRM | `/api/service-records` | ✅ |
+| Inventario | `/api/inventory` | ✅ |
+| Ventas | `/api/product-sales` | ✅ |
+| Gastos | `/api/expenses` | ✅ Admin |
+| Caja | `/api/cash-closing` | ✅ Admin |
+| Clientes | `/api/customers` | ✅ |
+| Puntos | `/api/rewards` | ✅ |
+| Reservas | `/api/bookings` | ✅ |
+| Estadísticas | `/api/stats` | ✅ |
+| Medios | `/api/media` | ✅ Admin |
+
+### Autenticación
+
+```bash
+# Login
+POST /api/auth/login
+Content-Type: application/json
+{ "email": "admin@barbershop.com", "password": "admin123" }
+
+# Respuesta: { "access_token": "eyJ...", "token_type": "bearer", "user": {...} }
+
+# Usar en requests autenticados:
+Authorization: Bearer eyJ...
+```
+
+---
+
+## 🛠️ Notas de Desarrollo
+
+### Convención Importante: Import de Iconos de Lucide
+
+Lucide exporta un componente `Image` que **colisiona** con el constructor nativo del browser `window.Image`. Siempre importar con alias:
+
+```jsx
+// ✅ Correcto
+import { Image as ImageIcon } from 'lucide-react';
+
+// ❌ Nunca así (causa "Failed to construct 'Image'"en runtime)
+import { Image } from 'lucide-react';
+```
+
+### Reinicio del Servidor de Desarrollo
+
+Después de cambios en rutas del router React (App.jsx), es necesario forzar una recarga sin caché en el browser:
+
+- **Mac:** `Cmd + Shift + R`
+- **Windows/Linux:** `Ctrl + Shift + R`
+- O desde DevTools: click derecho en el ícono de recarga → "Vaciar caché y forzar recarga"
+
+### Variables de Entorno
+
+- Las variables con prefijo `VITE_` son accesibles en el frontend via `import.meta.env.VITE_*`
+- Las variables sin prefijo son exclusivas del backend Python
+- **Nunca commitear el archivo `.env`** con credenciales reales
+
+---
+
+## 📄 Licencia
+
+Sistema propietario desarrollado para uso interno. Todos los derechos reservados.

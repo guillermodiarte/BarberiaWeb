@@ -4,8 +4,12 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "start": "vite",
-    "dev": "vite",
+    "dev": "concurrently -k -n \"BACKEND,FRONTEND\" -c \"cyan,yellow\" \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "backend/venv/bin/uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload",
+    "dev:frontend": "vite",
+    "start": "npm run dev",
+    "serve": "backend/venv/bin/uvicorn backend.app.main:app --host 0.0.0.0 --port 8000",
+    "seed": "backend/venv/bin/python backend/seed.py",
     "build": "vite build",
     "preview": "vite preview"
   },
@@ -28,6 +32,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-helmet": "^6.1.0",
+    "react-router-dom": "^7.18.5",
     "tailwind-merge": "^1.14.0",
     "tailwindcss-animate": "^1.0.7"
   },
@@ -42,6 +47,7 @@
     "@types/react-dom": "^18.2.7",
     "@vitejs/plugin-react": "^4.0.3",
     "autoprefixer": "^10.4.16",
+    "concurrently": "^10.0.7",
     "eslint": "^8.57.1",
     "eslint-config-react-app": "^7.0.1",
     "postcss": "^8.4.31",

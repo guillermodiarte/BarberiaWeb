@@ -4,6 +4,118 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===== THEME CSS VARIABLES ===== */
+:root {
+    --theme-primary: #f59e0b;
+    --theme-primary-hover: #d97706;
+    --theme-secondary: #b45309;
+    --theme-accent: #fef3c7;
+    --theme-gradient: linear-gradient(135deg, #f59e0b, #d97706, #92400e);
+    --theme-border: rgba(245, 158, 11, 0.35);
+    --theme-bg: #020617;
+    --theme-card-bg: #0f172a;
+    --theme-sidebar-active-text: #020617;
+    --theme-glow: rgba(245, 158, 11, 0.15);
+}
+
+/* ===== THEME-AWARE UTILITY CLASSES ===== */
+/* Use these classes in components to automatically pick up the active theme */
+
+.theme-text {
+    color: var(--theme-primary);
+}
+.theme-text-secondary {
+    color: var(--theme-secondary);
+}
+.theme-bg {
+    background-color: var(--theme-primary);
+}
+.theme-bg-glow {
+    background: var(--theme-glow);
+}
+.theme-border-color {
+    border-color: var(--theme-border);
+}
+.theme-gradient-bg {
+    background: var(--theme-gradient);
+}
+.theme-gradient-text {
+    background: var(--theme-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Primary Button */
+.btn-theme {
+    background-color: var(--theme-primary);
+    color: var(--theme-sidebar-active-text, #020617);
+    transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+.btn-theme:hover {
+    background-color: var(--theme-primary-hover);
+    box-shadow: 0 4px 20px var(--theme-glow);
+}
+
+/* Dynamic contrast text for theme primary buttons */
+button.bg-amber-500,
+a.bg-amber-500,
+button[class*="bg-amber-500"],
+a[class*="bg-amber-500"],
+button[class*="from-amber-500"],
+a[class*="from-amber-500"] {
+    color: var(--theme-btn-text, #020617) !important;
+}
+
+button.bg-amber-500 *,
+a.bg-amber-500 *,
+button[class*="bg-amber-500"] *,
+a[class*="bg-amber-500"] *,
+button[class*="from-amber-500"] *,
+a[class*="from-amber-500"] * {
+    color: var(--theme-btn-text, #020617) !important;
+}
+
+/* Active sidebar item with theme styling */
+.sidebar-active-tab {
+    background-color: rgb(var(--theme-500-rgb, 245 158 11)) !important;
+    color: var(--theme-btn-text, #020617) !important;
+    box-shadow: 0 4px 16px rgba(var(--theme-500-rgb, 245 158 11), 0.3) !important;
+}
+.sidebar-active-tab * {
+    color: var(--theme-btn-text, #020617) !important;
+}
+
+/* Theme-aware card */
+.theme-card {
+    background-color: var(--theme-card-bg);
+    border: 1px solid var(--theme-border);
+}
+
+/* Theme accent border glow on hover */
+.theme-hover-border:hover {
+    border-color: var(--theme-primary) !important;
+    box-shadow: 0 0 0 1px var(--theme-glow);
+}
+
+/* Badge / pill with theme color */
+.theme-badge {
+    background: var(--theme-glow);
+    color: var(--theme-primary);
+    border: 1px solid var(--theme-border);
+}
+
+/* Spinner with theme color */
+.theme-spinner {
+    border-color: var(--theme-primary);
+    border-top-color: transparent;
+}
+
+html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 80px;
+}
+
 body {
     @apply bg-slate-900 text-white;
     font-family: 'Inter', sans-serif;
@@ -14,7 +126,7 @@ body {
 }
 
 .gradient-text {
-    background: linear-gradient(135deg, #f59e0b, #d97706, #92400e);
+    background: var(--theme-gradient, linear-gradient(135deg, #f59e0b, #d97706, #92400e));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -30,8 +142,22 @@ body {
     );
 }
 
+.barber-pole-stripes {
+    background-image: repeating-linear-gradient(
+        -45deg,
+        #dc2626 0px,
+        #dc2626 14px,
+        #ffffff 14px,
+        #ffffff 28px,
+        #2563eb 28px,
+        #2563eb 42px,
+        #ffffff 42px,
+        #ffffff 56px
+    );
+}
+
 .glass-effect {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.08);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.15);
 }

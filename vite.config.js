@@ -7,8 +7,20 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      // Define el alias '@' para que apunte a la ruta absoluta de la carpeta 'src'
       '@': path.resolve(__dirname, './src'),
+    },
+  },
+  server: {
+    port: 5173,
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+      },
+      '/uploads': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+      },
     },
   },
 });

@@ -1,43 +1,62 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { MapPin, Phone, Clock, Mail } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { toast } from '@/components/ui/use-toast';
+import { MapPin, Phone, Clock, Mail, MessageSquare, ExternalLink, Navigation } from 'lucide-react';
+import { CONFIG } from '../config';
+import { api } from '../api';
 
 const Contact = () => {
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    toast({
-      title: "🚧 Esta función no está implementada aún",
-      description: "¡Pero no te preocupes! Puedes solicitarla en tu próximo prompt! 🚀"
-    });
-  };
+  const [publicSettings, setPublicSettings] = useState(null);
+
+  useEffect(() => {
+    api.getPublicSettings()
+      .then(data => setPublicSettings(data))
+      .catch(err => console.log('Usando configuración por defecto en contacto:', err));
+  }, []);
+
+  const barbershopName = publicSettings?.barbershop_name || CONFIG.name;
+  const address = publicSettings?.barbershop_address || CONFIG.address;
+  const phone = publicSettings?.barbershop_phone || CONFIG.phone;
+  const mapsUrl = publicSettings?.barbershop_google_maps_url || `https://maps.google.com/?q=${encodeURIComponent(address)}`;
+  
+  // Free interactive embed URL based on address or custom embed URL
+  const customEmbed = publicSettings?.barbershop_google_maps_embed_url?.trim();
+  const embedUrl = customEmbed && customEmbed.startsWith('http')
+    ? customEmbed
+    : `https://maps.google.com/maps?q=${encodeURIComponent(address)}&t=&z=16&ie=UTF8&iwloc=&output=embed`;
 
   const contactInfo = [
     {
       icon: MapPin,
       title: "Ubicación",
-      details: ["Av. Principal 123", "Centro, Ciudad"]
+      details: [address],
+      action: {
+        label: "Ver en Google Maps",
+        url: mapsUrl
+      }
     },
     {
       icon: Phone,
-      title: "Teléfono",
-      details: ["+1 (555) 123-4567", "WhatsApp disponible"]
+      title: "Teléfono / WhatsApp",
+      details: [phone, "Atención directa para turnos y consultas"],
+      action: {
+        label: "Enviar WhatsApp",
+        url: `https://wa.me/${phone.replace(/[^0-9]/g, '')}`
+      }
     },
     {
       icon: Clock,
-      title: "Horarios",
-      details: ["Lun-Vie: 9:00 - 20:00", "Sáb: 9:00 - 18:00", "Dom: 10:00 - 16:00"]
+      title: "Horarios de Salón",
+      details: ["Lun-Vie: 10:00 - 20:30", "Sáb: 09:30 - 20:00", "Dom: Cerrado"]
     },
     {
       icon: Mail,
       title: "Email",
-      details: ["info@barbershopelite.com", "reservas@barbershopelite.com"]
+      details: [CONFIG.email]
     }
   ];
 
   return (
-    <section id="contacto" className="py-20 px-4">
+    <section id="contacto" className="py-20 px-4 bg-slate-950">
       <div className="container mx-auto max-w-6xl">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -45,149 +64,129 @@ const Contact = () => {
           transition={{ duration: 0.8 }}
           className="text-center mb-16"
         >
-          <h2 className="font-heading text-4xl md:text-5xl font-bold mb-6">
-            <span className="text-white">Contáctanos</span>
+          <span className="text-amber-400 font-semibold text-xs uppercase tracking-widest px-3 py-1 bg-amber-500/10 rounded-full border border-amber-500/20">
+            Estamos para atenderte
+          </span>
+          <h2 className="font-heading text-4xl md:text-5xl font-bold mb-4 mt-3">
+            <span className="text-white">Contáctanos en</span>{' '}
+            <span className="gradient-text">{barbershopName}</span>
           </h2>
-          <p className="text-xl text-gray-300 max-w-2xl mx-auto">
-            Estamos aquí para atenderte. Reserva tu cita o contáctanos 
-            para cualquier consulta sobre nuestros servicios.
+          <p className="text-slate-400 text-lg max-w-2xl mx-auto">
+            Visítanos en nuestro salón o escríbenos directamente por WhatsApp para coordinar tu cita o evento especial.
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          {/* Contact Information */}
-          <motion.div
-            initial={{ opacity: 0, x: -50 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8 }}
-            className="space-y-8"
-          >
-            {contactInfo.map((info, index) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {contactInfo.map((info, index) => {
+            const Icon = info.icon;
+            return (
               <motion.div
                 key={info.title}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: index * 0.1 }}
-                className="glass-effect rounded-xl p-6 hover:shadow-xl transition-all duration-300"
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                className="bg-slate-900 border border-slate-800 p-6 rounded-2xl flex flex-col items-center text-center justify-between shadow-lg hover:border-amber-500/30 transition-all duration-300"
               >
-                <div className="flex items-start space-x-4">
-                  <div className="bg-gradient-to-r from-amber-500 to-amber-600 rounded-full p-3">
-                    <info.icon className="h-6 w-6 text-black" />
+                <div>
+                  <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center justify-center text-amber-400 mb-4 mx-auto">
+                    <Icon className="w-6 h-6" />
                   </div>
-                  <div>
-                    <h3 className="font-heading text-xl font-bold text-white mb-2">
-                      {info.title}
-                    </h3>
-                    {info.details.map((detail, idx) => (
-                      <p key={idx} className="text-gray-300 mb-1">
-                        {detail}
-                      </p>
-                    ))}
-                  </div>
+                  <h4 className="text-base font-bold text-white mb-2">{info.title}</h4>
+                  {info.details.map((detail, idx) => (
+                    <p key={idx} className="text-slate-400 text-xs leading-relaxed">{detail}</p>
+                  ))}
                 </div>
-              </motion.div>
-            ))}
 
-            {/* Map placeholder */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.4 }}
-              className="glass-effect rounded-xl p-6"
-            >
-              <h3 className="font-heading text-xl font-bold text-white mb-4">
-                Nuestra Ubicación
-              </h3>
-          <div className="relative w-full overflow-hidden rounded-lg shadow-lg" style={{ paddingTop: '56.25%' }}>
+                {info.action && (
+                  <a
+                    href={info.action.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-xl text-xs font-bold transition-colors"
+                  >
+                    <span>{info.action.label}</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                )}
+              </motion.div>
+            );
+          })}
+        </div>
+
+        {/* Google Maps Interactive Embed */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="mt-12 overflow-hidden rounded-3xl border border-slate-800 bg-slate-900 shadow-2xl relative"
+        >
+          <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between flex-wrap gap-3 bg-slate-950/80">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-amber-500/10 text-amber-400 rounded-xl border border-amber-500/20">
+                <MapPin className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-white font-heading">
+                  Nuestra Ubicación en el Mapa
+                </h4>
+                <p className="text-xs text-slate-400">
+                  {address}
+                </p>
+              </div>
+            </div>
+
+            {mapsUrl && (
+              <a
+                href={mapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center space-x-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold rounded-xl transition-all shadow-md active:scale-95"
+              >
+                <Navigation className="w-4 h-4" />
+                <span>Abrir en GPS</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            )}
+          </div>
+
+          <div className="w-full h-80 sm:h-96 relative bg-slate-950">
             <iframe
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1374.7733462182125!2d-58.22076509059854!3d-26.191226718266545!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x945ca912a731201d%3A0x24298445f761030e!2sBenitez%20Barber%C3%ADa%20y%20Peluquer%C3%ADa!5e0!3m2!1ses!2sar!4v1760723013030!5m2!1ses!2sar"
+              title={`Mapa de ubicación de ${barbershopName}`}
+              src={embedUrl}
+              width="100%"
+              height="100%"
+              style={{ border: 0 }}
               allowFullScreen=""
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"
-              className="absolute top-0 left-0 w-full h-full border-0"
-            ></iframe>
+              className="w-full h-full"
+            />
           </div>
-            </motion.div>
-          </motion.div>
+        </motion.div>
 
-          {/* Contact Form */}
-          <motion.div
-            initial={{ opacity: 0, x: 50 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8 }}
-            className="glass-effect rounded-xl p-8"
+        {/* Action Buttons: WhatsApp & Google Maps Navigation */}
+        <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4">
+          <a
+            href={`https://wa.me/${phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hola ${barbershopName}! Quisiera hacer una consulta.`)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-8 py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold rounded-2xl text-base shadow-xl shadow-emerald-950/40 transition-transform hover:-translate-y-0.5"
           >
-            <h3 className="font-heading text-2xl font-bold text-white mb-6">
-              Envíanos un Mensaje
-            </h3>
-            
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Nombre
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-amber-500 transition-colors"
-                    placeholder="Tu nombre"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Teléfono
-                  </label>
-                  <input
-                    type="tel"
-                    className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-amber-500 transition-colors"
-                    placeholder="Tu teléfono"
-                  />
-                </div>
-              </div>
+            <MessageSquare className="w-5 h-5" />
+            <span>Chatear por WhatsApp Ahora</span>
+          </a>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-amber-500 transition-colors"
-                  placeholder="tu@email.com"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Servicio de Interés
-                </label>
-                <select className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-amber-500 transition-colors">
-                  <option value="">Selecciona un servicio</option>
-                  <option value="corte">Corte Clásico</option>
-                  <option value="afeitado">Afeitado Premium</option>
-                  <option value="combo">Corte + Barba</option>
-                  <option value="vip">Tratamiento VIP</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Mensaje
-                </label>
-                <textarea
-                  rows={4}
-                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-amber-500 transition-colors resize-none"
-                  placeholder="Cuéntanos sobre tu estilo ideal o cualquier consulta..."
-                ></textarea>
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-black font-bold text-lg py-3"
-              >
-                Enviar Mensaje
-              </Button>
-            </form>
-          </motion.div>
+          {mapsUrl && (
+            <a
+              href={mapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-7 py-4 bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold rounded-2xl text-base border border-amber-500/40 shadow-xl transition-transform hover:-translate-y-0.5"
+            >
+              <Navigation className="w-5 h-5 text-amber-400" />
+              <span>Cómo Llegar (Google Maps)</span>
+            </a>
+          )}
         </div>
       </div>
     </section>

@@ -1,0 +1,103 @@
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from backend.app.database import get_db
+from backend.app.models import User
+from backend.app.schemas import UserCreate, UserUpdate, UserOut
+from backend.app.auth import require_admin, get_password_hash, get_current_user
+
+router = APIRouter(prefix="/api/barbers", tags=["Barberos y Esquemas"])
+
+@router.get("", response_model=List[UserOut])
+def list_barbers(
+    include_inactive: bool = False,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user)
+):
+    query = db.query(User).filter(User.role == "barber")
+    if not include_inactive:
+        query = query.filter(User.is_active == True)
+    return query.order_by(User.full_name.asc()).all()
+
+@router.get("/public")
+def list_barbers_public(db: Session = Depends(get_db)):
+    """List of active barbers for public booking selection"""
+    barbers = db.query(User).filter(User.role == "barber", User.is_active == True).all()
+    return [{"id": b.id, "full_name": b.full_name} for b in barbers]
+
+@router.get("/{barber_id}", response_model=UserOut)
+def get_barber(barber_id: int, db: Session = Depends(get_db), admin: User = Depends(require_admin)):
+    barber = db.query(User).filter(User.id == barber_id, User.role == "barber").first()
+    if not barber:
+        raise HTTPException(status_code=404, detail="Barbero no encontrado")
+    return barber
+
+@router.post("", response_model=UserOut, status_code=status.HTTP_201_CREATED)
+def create_barber(
+    barber_in: UserCreate,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin)
+):
+    existing = db.query(User).filter(User.email == barber_in.email.lower().strip()).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Ya existe un usuario registrado con este correo")
+
+    barber = User(
+        email=barber_in.email.lower().strip(),
+        full_name=barber_in.full_name,
+        phone=barber_in.phone,
+        hashed_password=get_password_hash(barber_in.password),
+        role="barber",
+        is_active=True,
+        payment_scheme=barber_in.payment_scheme,
+        commission_percentage=barber_in.commission_percentage,
+        fixed_rent_amount=barber_in.fixed_rent_amount,
+        fixed_rent_period=barber_in.fixed_rent_period
+    )
+    db.add(barber)
+    db.commit()
+    db.refresh(barber)
+    return barber
+
+@router.put("/{barber_id}", response_model=UserOut)
+def update_barber(
+    barber_id: int,
+    barber_in: UserUpdate,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin)
+):
+    barber = db.query(User).filter(User.id == barber_id).first()
+    if not barber:
+        raise HTTPException(status_code=404, detail="Barbero no encontrado")
+
+    update_data = barber_in.model_dump(exclude_unset=True)
+    if "password" in update_data and update_data["password"]:
+        barber.hashed_password = get_password_hash(update_data.pop("password"))
+    if "email" in update_data and update_data["email"]:
+        barber.email = update_data["email"].lower().strip()
+
+    for field, value in update_data.items():
+        setattr(barber, field, value)
+
+    db.commit()
+    db.refresh(barber)
+    return barber
+
+@router.delete("/{barber_id}")
+def toggle_or_delete_barber(
+    barber_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin)
+):
+    barber = db.query(User).filter(User.id == barber_id).first()
+    if not barber:
+        raise HTTPException(status_code=404, detail="Barbero no encontrado")
+    if barber.id == admin.id:
+        raise HTTPException(status_code=400, detail="No puedes desactivar tu propia cuenta de administrador")
+
+    # Soft deactivate/toggle
+    barber.is_active = not barber.is_active
+    db.commit()
+    estado = "activado" if barber.is_active else "suspendido/desactivado"
+    return {"message": f"Barbero {barber.full_name} ha sido {estado}", "is_active": barber.is_active}
+
