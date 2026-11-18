@@ -11,10 +11,20 @@ router = APIRouter(prefix="/api/barbers", tags=["Barberos y Esquemas"])
 @router.get("", response_model=List[UserOut])
 def list_barbers(
     include_inactive: bool = False,
+    include_admins: bool = False,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_current_user)
 ):
-    query = db.query(User).filter(User.role == "barber")
+    if include_admins and current_user:
+        if current_user.role == "superadmin":
+            # Superadmin ve a todos: barberos, admins y su propia cuenta superadmin
+            allowed_roles = ["barber", "admin", "superadmin"]
+        else:
+            # Admin solo ve barberos y otros admins (nunca superadmin)
+            allowed_roles = ["barber", "admin"]
+        query = db.query(User).filter(User.role.in_(allowed_roles))
+    else:
+        query = db.query(User).filter(User.role == "barber")
     if not include_inactive:
         query = query.filter(User.is_active == True)
     return query.order_by(User.full_name.asc()).all()
@@ -42,17 +52,23 @@ def create_barber(
     if existing:
         raise HTTPException(status_code=400, detail="Ya existe un usuario registrado con este correo")
 
+    assigned_role = barber_in.role if barber_in.role in ["barber", "admin"] else "barber"
+    # Solo superadmin puede crear otros admins; un admin crea barberos
+    if assigned_role == "admin" and admin.role not in ["admin", "superadmin"]:
+        assigned_role = "barber"
+
     barber = User(
         email=barber_in.email.lower().strip(),
         full_name=barber_in.full_name,
         phone=barber_in.phone,
         hashed_password=get_password_hash(barber_in.password),
-        role="barber",
+        role=assigned_role,
         is_active=True,
         payment_scheme=barber_in.payment_scheme,
         commission_percentage=barber_in.commission_percentage,
         fixed_rent_amount=barber_in.fixed_rent_amount,
-        fixed_rent_period=barber_in.fixed_rent_period
+        fixed_rent_period=barber_in.fixed_rent_period,
+        payout_frequency=barber_in.payout_frequency or "daily"
     )
     db.add(barber)
     db.commit()

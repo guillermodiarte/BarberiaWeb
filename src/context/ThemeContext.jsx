@@ -235,6 +235,8 @@ export const ThemeProvider = ({ children }) => {
   const [bannerSlides, setBannerSlides] = useState(DEFAULT_BANNER_SLIDES);
   const [bannerInterval, setBannerInterval] = useState(5);
   const [customPrimaryColor, setCustomPrimaryColor] = useState('');
+  const [pageTabTitle, setPageTabTitle] = useState('');
+  const [faviconUrl, setFaviconUrl] = useState('');
   const [loadingTheme, setLoadingTheme] = useState(true);
   const [sectionsVisibility, setSectionsVisibility] = useState({
     services: true,
@@ -305,6 +307,12 @@ export const ThemeProvider = ({ children }) => {
         if (publicSettings.custom_primary_color !== undefined) {
           setCustomPrimaryColor(publicSettings.custom_primary_color);
         }
+        if (publicSettings.page_tab_title !== undefined) {
+          setPageTabTitle(publicSettings.page_tab_title);
+        }
+        if (publicSettings.barbershop_favicon_url !== undefined) {
+          setFaviconUrl(publicSettings.barbershop_favicon_url);
+        }
       }
     } catch (err) {
       console.warn('Usando configuración por defecto:', err.message);
@@ -354,6 +362,31 @@ export const ThemeProvider = ({ children }) => {
     root.setAttribute('data-theme', currentTheme.id);
   }, [currentTheme, customPrimaryColor]);
 
+  // Update browser tab title and favicon dynamically
+  useEffect(() => {
+    const finalTitle = pageTabTitle || (barbershopName ? `${barbershopName} - ${tagline}` : 'BarberShop Elite');
+    document.title = finalTitle;
+
+    if (faviconUrl) {
+      let link = document.querySelector("link[rel*='icon']");
+      if (!link) {
+        link = document.createElement('link');
+        document.head.appendChild(link);
+      }
+      link.rel = 'icon';
+      if (faviconUrl.endsWith('.ico')) {
+        link.type = 'image/x-icon';
+      } else if (faviconUrl.endsWith('.svg')) {
+        link.type = 'image/svg+xml';
+      } else if (faviconUrl.endsWith('.png')) {
+        link.type = 'image/png';
+      } else {
+        link.type = 'image/webp';
+      }
+      link.href = faviconUrl;
+    }
+  }, [pageTabTitle, barbershopName, tagline, faviconUrl]);
+
   const changeTheme = async (themeId) => {
     setActiveThemeId(themeId);
     try {
@@ -363,17 +396,21 @@ export const ThemeProvider = ({ children }) => {
     }
   };
 
-  const updateBranding = async ({ newLogoUrl, newTagline, newCustomColor, newName }) => {
+  const updateBranding = async ({ newLogoUrl, newTagline, newCustomColor, newName, newPageTabTitle, newFaviconUrl }) => {
     if (newLogoUrl !== undefined) setLogoUrl(newLogoUrl);
     if (newTagline !== undefined) setTagline(newTagline);
     if (newCustomColor !== undefined) setCustomPrimaryColor(newCustomColor);
     if (newName !== undefined) setBarbershopName(newName);
+    if (newPageTabTitle !== undefined) setPageTabTitle(newPageTabTitle);
+    if (newFaviconUrl !== undefined) setFaviconUrl(newFaviconUrl);
 
     const promises = [];
     if (newLogoUrl !== undefined) promises.push(api.updateSetting('barbershop_logo_url', newLogoUrl));
     if (newTagline !== undefined) promises.push(api.updateSetting('barbershop_tagline', newTagline));
     if (newCustomColor !== undefined) promises.push(api.updateSetting('custom_primary_color', newCustomColor));
     if (newName !== undefined) promises.push(api.updateSetting('barbershop_name', newName));
+    if (newPageTabTitle !== undefined) promises.push(api.updateSetting('page_tab_title', newPageTabTitle));
+    if (newFaviconUrl !== undefined) promises.push(api.updateSetting('barbershop_favicon_url', newFaviconUrl));
 
     await Promise.all(promises);
   };
@@ -428,6 +465,8 @@ export const ThemeProvider = ({ children }) => {
     bannerSlides,
     bannerInterval,
     customPrimaryColor,
+    pageTabTitle,
+    faviconUrl,
     loadingTheme,
     changeTheme,
     updateBranding,

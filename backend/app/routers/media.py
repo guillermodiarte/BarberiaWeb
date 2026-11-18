@@ -12,11 +12,11 @@ from backend.app.models import User
 
 router = APIRouter(prefix="/api/media", tags=["Gestión de Medios & Galería"])
 
-# Base directory for uploads
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Base directory for uploads (Project root)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 UPLOADS_ROOT = os.path.join(BASE_DIR, "uploads")
 
-VALID_FOLDERS = ["banner", "galeria", "equipo", "videos", "sistema"]
+VALID_FOLDERS = ["banner", "galeria", "equipo", "videos", "sistema", "favicon"]
 
 # Max dimension widths per folder for WebP optimization
 MAX_WIDTHS = {
@@ -74,6 +74,43 @@ def optimize_image(input_bytes: bytes, folder: str, original_filename: str) -> t
     size_kb = int(os.path.getsize(dest_path) / 1024)
     return webp_filename, size_kb
 
+def process_favicon(input_bytes: bytes, original_filename: str) -> tuple[str, int]:
+    """
+    Crops image to a 1:1 square, resizes to multi-resolution standard favicon sizes,
+    and encodes it into an ultra-compact .ico file (< 6 KB) placed in uploads/sistema/.
+    Returns (filename, size_kb).
+    """
+    import io
+    image = Image.open(io.BytesIO(input_bytes))
+    
+    try:
+        image = ImageOps.exif_transpose(image)
+    except Exception:
+        pass
+
+    if image.mode != "RGBA":
+        image = image.convert("RGBA")
+
+    w, h = image.size
+    min_dim = min(w, h)
+    left = (w - min_dim) // 2
+    top = (h - min_dim) // 2
+    square_img = image.crop((left, top, left + min_dim, top + min_dim))
+
+    base_name = os.path.splitext(sanitize_filename(original_filename))[0][:20] or "favicon"
+    unique_id = uuid.uuid4().hex[:8]
+    ico_filename = f"favicon_{base_name}_{unique_id}.ico"
+
+    dest_folder = os.path.join(UPLOADS_ROOT, "sistema")
+    os.makedirs(dest_folder, exist_ok=True)
+    dest_path = os.path.join(dest_folder, ico_filename)
+
+    # Save multi-resolution standard ICO: 48x48 (Retina), 32x32 (standard), 16x16 (tab)
+    square_img.save(dest_path, format="ICO", sizes=[(48, 48), (32, 32), (16, 16)])
+    size_bytes = os.path.getsize(dest_path)
+    size_kb = max(1, int(size_bytes / 1024))
+    return ico_filename, size_kb
+
 def process_video(file_bytes: bytes, original_filename: str) -> tuple[str, int]:
     """
     Saves video to uploads/videos and attempts WebM conversion via ffmpeg if available.
@@ -122,9 +159,10 @@ def process_video(file_bytes: bytes, original_filename: str) -> tuple[str, int]:
 async def upload_media_file(
     file: UploadFile = File(...),
     folder: str = Form("galeria"),
+    is_favicon: bool = Form(False),
     admin: User = Depends(require_admin)
 ):
-    """Uploads an image or video, optimizes it (WebP / WebM) and stores it in the designated folder."""
+    """Uploads an image or video, optimizes it (WebP / WebM / ICO) and stores it in the designated folder."""
     clean_folder = folder.lower().strip()
     if clean_folder not in VALID_FOLDERS:
         raise HTTPException(
@@ -139,13 +177,28 @@ async def upload_media_file(
     if not file_bytes:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El archivo está vacío.")
 
-    is_video = "video" in content_type or clean_folder == "videos" or original_filename.lower().endswith((".mp4", ".mov", ".avi", ".webm"))
+    is_fav = is_favicon or clean_folder == "favicon" or ("favicon" in original_filename.lower() and clean_folder == "sistema")
+    is_video = not is_fav and ("video" in content_type or clean_folder == "videos" or original_filename.lower().endswith((".mp4", ".mov", ".avi", ".webm")))
 
     try:
-        if is_video:
+        if is_fav:
+            filename, size_kb = process_favicon(file_bytes, original_filename)
+            media_type = "image"
+            clean_folder = "sistema"
+        elif is_video:
             filename, size_kb = process_video(file_bytes, original_filename)
             media_type = "video"
             clean_folder = "videos"
+        elif original_filename.lower().endswith(".svg"):
+            base_name = os.path.splitext(sanitize_filename(original_filename))[0][:30]
+            unique_id = uuid.uuid4().hex[:8]
+            filename = f"{base_name}_{unique_id}.svg"
+            dest_folder = os.path.join(UPLOADS_ROOT, clean_folder)
+            os.makedirs(dest_folder, exist_ok=True)
+            with open(os.path.join(dest_folder, filename), "wb") as f:
+                f.write(file_bytes)
+            size_kb = max(1, int(len(file_bytes) / 1024))
+            media_type = "image"
         else:
             filename, size_kb = optimize_image(file_bytes, clean_folder, original_filename)
             media_type = "image"

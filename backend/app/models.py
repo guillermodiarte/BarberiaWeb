@@ -21,6 +21,7 @@ class User(Base):
     commission_percentage = Column(Float, default=50.0, nullable=False)  # e.g. 50.0 = 50%
     fixed_rent_amount = Column(Float, default=0.0, nullable=False)  # in ARS
     fixed_rent_period = Column(String(50), default="monthly", nullable=False)  # "weekly" | "monthly"
+    payout_frequency = Column(String(50), default="daily", nullable=False)  # "daily" | "weekly" | "biweekly" | "monthly"
     
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
@@ -225,6 +226,8 @@ class CashClosing(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     closed_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    closing_type = Column(String(50), default="global", nullable=False)  # "global" | "barber_shift"
+    barber_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # Set if closing_type == "barber_shift"
     period_type = Column(String(50), default="daily", nullable=False)  # "daily", "weekly", "biweekly", "monthly", "custom"
     start_date = Column(DateTime, nullable=False)
     end_date = Column(DateTime, nullable=False)
@@ -245,6 +248,7 @@ class CashClosing(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     closed_by = relationship("User", foreign_keys=[closed_by_id])
+    barber = relationship("User", foreign_keys=[barber_id])
     service_records = relationship("ServiceRecord", back_populates="settlement", foreign_keys="ServiceRecord.settlement_id")
     product_sales = relationship("ProductSale", back_populates="settlement", foreign_keys="ProductSale.settlement_id")
 

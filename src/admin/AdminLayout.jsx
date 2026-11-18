@@ -52,7 +52,7 @@ export const AdminLayout = () => {
   const navItems = [
     { id: 'dashboard', label: 'Resumen General', icon: LayoutDashboard, adminOnly: false },
     { id: 'cortes', label: 'Registrar Cortes (CRM)', icon: Scissors, adminOnly: false },
-    { id: 'caja', label: 'Caja & Arqueo', icon: Wallet, adminOnly: true },
+    { id: 'caja', label: 'Control de Caja', icon: Wallet, adminOnly: true },
     { id: 'servicios', label: 'Servicios & Combos', icon: Scissors, adminOnly: true },
     { id: 'barberos', label: 'Barberos & Esquemas', icon: Users, adminOnly: true },
     { id: 'inventario', label: 'Inventario & Stock', icon: Package, adminOnly: false },

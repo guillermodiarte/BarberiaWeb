@@ -88,11 +88,13 @@ Cualquier URL que no exista muestra una página de error elegante con:
 - El sistema calcula automáticamente la comisión del barbero y actualiza el saldo de puntos del cliente
 - Accesible para todos los barberos y administradores
 
-#### 3. 💰 Caja & Arqueo _(solo Admin)_
-- Cierre de caja diario, semanal o mensual
-- Desglose de efectivo en mostrador vs. transferencias digitales
-- Cálculo automático de comisiones y alquileres de barberos
-- Historial de cierres anteriores con detalle
+#### 3. 💰 Control de Caja & Liquidaciones _(solo Admin)_
+- **Liquidación por Barbero (Turnos)**: Diseñado para barberos que rotan en turnos (ej. 4 horas a la mañana, otro 4 horas a la tarde). Permite liquidar a cada barbero de forma individual al terminar su jornada.
+- **Múltiples cierres de turno en el mismo día**: Si un barbero realiza cortes a último momento tras su cierre, se acumulan para un segundo turno del mismo día sin alterar el cierre previo.
+- **Frecuencia configurable por barbero o admin**: Liquidación diaria/turno, semanal, quincenal o mensual configurable al crear o editar el usuario.
+- **Conciliación automática (¿Quién le debe a quién?)**: Cruza las comisiones ganadas contra el dinero que cada barbero retuvo físicamente o mediante transferencias directas a su cuenta.
+- **Cierre Global de Caja (Fin del Día)**: Consolida todo el movimiento del día/período, computa el efectivo físico en cajón, transferencias bancarias a la barbería, gastos fijos/variables deducibles y la ganancia neta final del negocio. Si quedaron barberos pendientes, se liquidan todos juntos.
+- **Historial completo con filtros**: Consulta de cierres globales y liquidaciones de turnos con desglose paso a paso.
 
 #### 4. 🛠️ Servicios & Combos _(solo Admin)_
 - Alta, edición y baja de servicios individuales y combos
@@ -117,7 +119,7 @@ Cualquier URL que no exista muestra una página de error elegante con:
 
 #### 8. 🧾 Gastos del Salón _(solo Admin)_
 - Registro de gastos operativos (alquiler, servicios, insumos, etc.)
-- Integración con el arqueo de caja
+- Integración con el control de caja
 
 #### 9. 🏆 Clientes (Fidelización)
 - Consulta y gestión de clientes por DNI o teléfono
@@ -139,7 +141,7 @@ La configuración tiene sub-secciones:
 
 | Sub-sección | Descripción | Rol requerido |
 |-------------|-------------|:---:|
-| **🎨 Estilos & Temas** | Selector de 5 paletas de colores para el sitio web | SuperAdmin |
+| **🎨 Estilos & Temas** | Selector de 5 paletas de colores, favicon oficial y título de la pestaña del navegador | SuperAdmin |
 | **👁️ Secciones de la Web** | Habilitar/deshabilitar secciones de la página pública | Admin |
 | **🏪 Barbería y Ubicación** | Nombre, teléfono, dirección, URL de Google Maps | Admin |
 | **🖼️ Banner & Slider** | Gestión de slides del hero: imagen, título, subtítulo, intervalo | Admin |
@@ -258,9 +260,9 @@ npm run dev
 
 | Servicio | URL |
 |---------|-----|
-| Página web pública | http://localhost:5173 |
-| Panel de administración | http://localhost:5173/gestion-elite |
-| Login admin | http://localhost:5173/gestion-elite/login |
+| Página web pública | http://localhost:3000 |
+| Panel de administración | http://localhost:3000/gestion-elite |
+| Login admin | http://localhost:3000/gestion-elite/login |
 | Backend API | http://127.0.0.1:8000 |
 | Documentación Swagger | http://127.0.0.1:8000/docs |
 
@@ -269,7 +271,7 @@ npm run dev
 | Comando | Descripción |
 |---------|-------------|
 | `npm run dev` | Inicia frontend (Vite) y backend (uvicorn) simultáneamente |
-| `npm run dev:frontend` | Solo el servidor Vite (puerto 5173) |
+| `npm run dev:frontend` | Solo el servidor Vite (puerto 3000) |
 | `npm run dev:backend` | Solo el servidor FastAPI (puerto 8000) con --reload |
 | `npm run build` | Compila el frontend para producción en `dist/` |
 | `npm run serve` | Sirve la app compilada en producción (puerto 8000) |
@@ -406,13 +408,14 @@ Cualquier URL que no exista muestra la **página 404** con opción de volver al 
 | Ver inventario | ✅ | ✅ | ✅ |
 | Ventas productos | ✅ | ✅ | ✅ |
 | Turnos y reservas | ✅ | ✅ | ✅ |
-| Caja & arqueo | ❌ | ✅ | ✅ |
+| Control de Caja | ❌ | ✅ | ✅ |
 | Servicios & combos | ❌ | ✅ | ✅ |
 | Gestión barberos | ❌ | ✅ | ✅ |
 | Gastos del salón | ❌ | ✅ | ✅ |
 | Galería & medios | ❌ | ✅ | ✅ |
 | Configuración | ❌ | ✅ | ✅ |
 | Cambiar tema visual | ❌ | ❌ | ✅ |
+| Favicon & Título de pestaña | ❌ | ❌ | ✅ |
 
 ---
 
@@ -481,7 +484,7 @@ Barberia/
 │   │       ├── inventory.py      ← Inventario & stock
 │   │       ├── product_sales.py  ← Ventas de productos
 │   │       ├── expenses.py       ← Gastos del salón
-│   │       ├── cash_closing.py   ← Arqueo de caja
+│   │       ├── cash_closing.py   ← Control de Caja
 │   │       ├── customers.py      ← Clientes & fidelización
 │   │       ├── rewards.py        ← Sistema de puntos
 │   │       ├── bookings.py       ← Reservas online

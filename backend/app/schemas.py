@@ -12,6 +12,7 @@ class UserBase(BaseModel):
     commission_percentage: float = 50.0
     fixed_rent_amount: float = 0.0
     fixed_rent_period: str = "monthly"
+    payout_frequency: str = "daily"  # "daily" | "weekly" | "biweekly" | "monthly"
 
 class UserCreate(UserBase):
     password: str
@@ -26,6 +27,7 @@ class UserUpdate(BaseModel):
     commission_percentage: Optional[float] = None
     fixed_rent_amount: Optional[float] = None
     fixed_rent_period: Optional[str] = None
+    payout_frequency: Optional[str] = None
     password: Optional[str] = None
 
 class UserOut(UserBase):
@@ -328,6 +330,9 @@ class BookingOut(BaseModel):
 
 # --- Cash Closings / Settlement ---
 class CashClosingPreview(BaseModel):
+    closing_type: Optional[str] = "global"  # "global" | "barber_shift"
+    barber_id: Optional[int] = None
+    barber_name: Optional[str] = None
     start_date: datetime
     end_date: datetime
     services_count: int
@@ -345,6 +350,8 @@ class CashClosingPreview(BaseModel):
     unsettled_sale_ids: List[int]
 
 class CashClosingCreate(BaseModel):
+    closing_type: str = "global"  # "global" | "barber_shift"
+    barber_id: Optional[int] = None
     period_type: str = "daily"  # "daily", "weekly", "biweekly", "monthly", "custom"
     start_date: datetime
     end_date: datetime
@@ -354,6 +361,9 @@ class CashClosingOut(BaseModel):
     id: int
     closed_by_id: int
     closed_by_name: Optional[str] = None
+    closing_type: str = "global"
+    barber_id: Optional[int] = None
+    barber_name: Optional[str] = None
     period_type: str
     start_date: datetime
     end_date: datetime

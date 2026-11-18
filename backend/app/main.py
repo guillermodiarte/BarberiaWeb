@@ -27,7 +27,7 @@ app_title = os.getenv("BARBERSHOP_NAME", "BarberShop Elite")
 
 app = FastAPI(
     title=f"{app_title} API",
-    description="Sistema Integral de Gestión de Barbería (Core CRM, Arqueo de Caja, Fidelización y Turnos)",
+    description="Sistema Integral de Gestión de Barbería (Core CRM, Control de Caja, Fidelización y Turnos)",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc"

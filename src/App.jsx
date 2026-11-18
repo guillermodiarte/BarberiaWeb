@@ -57,17 +57,27 @@ import { AdminLogin } from './admin/AdminLogin';
 import NotFound from '@/components/NotFound';
 
 function PublicLanding() {
-  const { barbershopName, tagline, currentTheme, sectionsVisibility = {} } = useTheme();
+  const { barbershopName, tagline, currentTheme, sectionsVisibility = {}, pageTabTitle, faviconUrl } = useTheme();
+
+  const finalTitle = pageTabTitle || `${barbershopName} - ${tagline}`;
 
   return (
     <>
       <Helmet>
-        <title>{barbershopName} - {tagline}</title>
+        <title>{finalTitle}</title>
+        {faviconUrl && (
+          <link 
+            rel="icon" 
+            type={faviconUrl.endsWith('.ico') ? 'image/x-icon' : faviconUrl.endsWith('.svg') ? 'image/svg+xml' : faviconUrl.endsWith('.png') ? 'image/png' : 'image/webp'} 
+            href={faviconUrl} 
+          />
+        )}
+        {faviconUrl && <link rel="apple-touch-icon" href={faviconUrl} />}
         <meta 
           name="description" 
           content={`${barbershopName}: Cortes modernos, afeitado a navaja, sistema de reservas online y programa de puntos de fidelidad en ${CONFIG.currency}.`} 
         />
-        <meta property="og:title" content={`${barbershopName} - ${tagline}`} />
+        <meta property="og:title" content={finalTitle} />
         <meta property="og:description" content={`Reserva tu turno online en ${barbershopName} y acumula puntos con cada corte.`} />
       </Helmet>
       

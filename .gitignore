@@ -26,3 +26,8 @@ backend/venv/
 *.pyc
 *.pyo
 *.db
+
+# Archivos multimedia subidos (uploads)
+/uploads/**/*
+!/uploads/**/
+!/uploads/**/.gitkeep

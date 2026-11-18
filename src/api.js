@@ -93,7 +93,7 @@ export const api = {
     }),
 
   // Barbers
-  getBarbers: (includeInactive = false) => apiRequest(`/barbers?include_inactive=${includeInactive}`),
+  getBarbers: (includeInactive = false, includeAdmins = false) => apiRequest(`/barbers?include_inactive=${includeInactive}&include_admins=${includeAdmins}`),
   getPublicBarbers: () => apiRequest('/barbers/public'),
   createBarber: (data) => apiRequest('/barbers', { method: 'POST', body: JSON.stringify(data) }),
   updateBarber: (id, data) => apiRequest(`/barbers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
@@ -137,15 +137,23 @@ export const api = {
   createExpense: (data) => apiRequest('/expenses', { method: 'POST', body: JSON.stringify(data) }),
   deleteExpense: (id) => apiRequest(`/expenses/${id}`, { method: 'DELETE' }),
 
-  // Cash Closing & Settlements (Arqueo)
-  getCashClosingPreview: (startDate, endDate) => {
+  // Cash Closing & Settlements (Control de Caja)
+  getCashClosingPreview: (startDate, endDate, barberId = null) => {
     const params = new URLSearchParams();
     if (startDate) params.append('start_date', startDate);
     if (endDate) params.append('end_date', endDate);
+    if (barberId) params.append('barber_id', barberId);
     return apiRequest(`/cash-closing/preview?${params.toString()}`);
   },
+  getBarbersStatus: () => apiRequest('/cash-closing/barbers-status'),
   closeCashRegister: (data) => apiRequest('/cash-closing/close', { method: 'POST', body: JSON.stringify(data) }),
-  getCashClosingHistory: () => apiRequest('/cash-closing/history'),
+  getCashClosingHistory: (closingType = null, barberId = null) => {
+    const params = new URLSearchParams();
+    if (closingType) params.append('closing_type', closingType);
+    if (barberId) params.append('barber_id', barberId);
+    const qs = params.toString();
+    return apiRequest(`/cash-closing/history${qs ? `?${qs}` : ''}`);
+  },
   getCashClosingDetail: (id) => apiRequest(`/cash-closing/${id}`),
 
   // Customers & Loyalty

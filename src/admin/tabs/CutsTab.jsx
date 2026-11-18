@@ -73,7 +73,7 @@ export const CutsTab = ({ user }) => {
       const [recordsRes, servicesRes, barbersRes, settingsRes] = await Promise.all([
         api.getServiceRecords(params),
         api.getServices(false),
-        api.getBarbers(false),
+        api.getBarbers(false, true),
         api.getPublicSettings().catch(() => ({}))
       ]);
       setRecords(recordsRes || []);
@@ -89,8 +89,14 @@ export const CutsTab = ({ user }) => {
       if (!barberId) {
         if (!isAdmin) {
           setBarberId(String(user.id));
-        } else if (barbersRes && barbersRes.length > 0) {
-          setBarberId(String(barbersRes[0].id));
+        } else {
+          // Admin: por defecto se selecciona a sí mismo si está en la lista
+          const selfInList = barbersRes && barbersRes.find(b => b.id === user.id);
+          if (selfInList) {
+            setBarberId(String(user.id));
+          } else if (barbersRes && barbersRes.length > 0) {
+            setBarberId(String(barbersRes[0].id));
+          }
         }
       }
     } catch (err) {
@@ -242,7 +248,12 @@ export const CutsTab = ({ user }) => {
     previewDebtText = 'Corte 100% Bonificado (Canje de Puntos) - Sin deuda';
   } else {
     currentPrice = (isAdmin && priceOverride) ? parseFloat(priceOverride) || 0 : (selectedServiceObj?.price || 0);
-    if (selectedBarberObj?.payment_scheme === 'fixed_rent') {
+    const selectedBarberIsAdmin = selectedBarberObj?.role === 'admin' || selectedBarberObj?.role === 'superadmin';
+    if (selectedBarberIsAdmin) {
+      // El admin/dueño realiza el corte: toda la ganancia va a la barbería
+      previewBarberEarnings = 0;
+      previewShopEarnings = currentPrice;
+    } else if (selectedBarberObj?.payment_scheme === 'fixed_rent') {
       previewBarberEarnings = currentPrice;
       previewShopEarnings = 0;
     } else {
@@ -251,7 +262,9 @@ export const CutsTab = ({ user }) => {
       previewShopEarnings = currentPrice - previewBarberEarnings;
     }
 
-    if (paymentOption === 'barber_transfer') {
+    if (selectedBarberIsAdmin) {
+      previewDebtText = 'Cobrado íntegramente por la barbería (Administrador)';
+    } else if (paymentOption === 'barber_transfer') {
       previewDebtText = previewShopEarnings > 0 
         ? `Barbero debe entregar $${previewShopEarnings.toLocaleString('es-AR')} ARS a la barbería`
         : 'Alquiler fijo - Barbero retiene el 100%';
@@ -347,18 +360,20 @@ export const CutsTab = ({ user }) => {
             </div>
           )}
 
-          <div>
-            <label className="block text-slate-400 font-semibold mb-1">Estado de Arqueo</label>
-            <select
-              value={isSettledFilter}
-              onChange={(e) => setIsSettledFilter(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white focus:outline-none focus:border-amber-500"
-            >
-              <option value="">Todos</option>
-              <option value="false">Pendientes de Arqueo</option>
-              <option value="true">Liquidados en Cierre de Caja</option>
-            </select>
-          </div>
+          {isAdmin && (
+            <div>
+              <label className="block text-slate-400 font-semibold mb-1">Liquidación en Cierre de Caja</label>
+              <select
+                value={isSettledFilter}
+                onChange={(e) => setIsSettledFilter(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white focus:outline-none focus:border-amber-500"
+              >
+                <option value="">Todos</option>
+                <option value="false">Pendientes de liquidar</option>
+                <option value="true">Ya liquidados</option>
+              </select>
+            </div>
+          )}
 
           <div>
             <label className="block text-slate-400 font-semibold mb-1">Fecha Desde</label>
@@ -386,12 +401,12 @@ export const CutsTab = ({ user }) => {
       <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
         {/* Table header - hidden on mobile, shown md+ */}
         <div className="hidden md:grid bg-slate-950 border-b border-slate-800 text-[11px] uppercase tracking-wider text-slate-400 font-semibold px-4 py-3"
-          style={{ gridTemplateColumns: isAdmin ? '110px 1fr 1fr 1fr 1fr 36px' : '110px 1fr 1fr 1fr 1fr' }}>
+          style={{ gridTemplateColumns: isAdmin ? '110px 1.5fr 1fr 1fr 1fr 36px' : '110px 2fr 1fr 1fr' }}>
           <div>Fecha</div>
           <div>Servicio / Cliente</div>
           <div>Barbero</div>
           <div>Cobro</div>
-          <div>Deuda / Estado</div>
+          {isAdmin && <div>Deuda / Estado</div>}
           {isAdmin && <div></div>}
         </div>
 
@@ -450,10 +465,14 @@ export const CutsTab = ({ user }) => {
                       <span className="text-amber-400 font-semibold">{r.barber_name}</span>
                       <span className="text-slate-500">·</span>
                       <span className="text-slate-400">{paymentLabel}</span>
-                      <span className="text-slate-500">·</span>
-                      <span className={`px-1.5 py-0.5 rounded-full font-semibold ${
-                        r.is_settled ? 'bg-slate-800 text-slate-400' : 'bg-amber-500/20 text-amber-300'
-                      }`}>{r.is_settled ? 'Cerrado' : 'Pendiente'}</span>
+                      {isAdmin && (
+                        <>
+                          <span className="text-slate-500">·</span>
+                          <span className={`px-1.5 py-0.5 rounded-full font-semibold ${
+                            r.is_settled ? 'bg-slate-800 text-slate-400' : 'bg-amber-500/20 text-amber-300'
+                          }`}>{r.is_settled ? 'Liquidado' : 'Pendiente'}</span>
+                        </>
+                      )}
                       {isAdmin && !r.is_settled && (
                         <button onClick={() => setDeleteId(r.id)} className="ml-auto p-1 text-slate-500 hover:text-rose-400 rounded-lg transition-colors" title="Eliminar">
                           <Trash2 className="w-3.5 h-3.5" />
@@ -464,7 +483,7 @@ export const CutsTab = ({ user }) => {
 
                   {/* Desktop layout: grid columns */}
                   <div className="hidden md:grid items-center gap-3"
-                    style={{ gridTemplateColumns: isAdmin ? '110px 1fr 1fr 1fr 1fr 36px' : '110px 1fr 1fr 1fr 1fr' }}>
+                    style={{ gridTemplateColumns: isAdmin ? '110px 1.5fr 1fr 1fr 1fr 36px' : '110px 2fr 1fr 1fr' }}>
                     {/* Fecha */}
                     <div className="text-xs font-mono text-slate-400">
                       <span className="text-white font-semibold">{dateStr}</span>
@@ -501,27 +520,29 @@ export const CutsTab = ({ user }) => {
                       <span className="text-[10px] text-slate-500">{collectorLabel}</span>
                     </div>
 
-                    {/* Deuda + Estado */}
-                    <div className="space-y-1">
-                      <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold leading-tight ${
-                        r.price === 0
-                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                          : isDebtBarber
-                            ? 'bg-rose-500/10 text-rose-400 border border-rose-500/30'
-                            : isDebtShop
-                              ? 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
-                              : 'bg-slate-800 text-slate-400'
-                      }`}>
-                        {r.price === 0 ? 'Sin deuda' : r.who_owes_whom}
-                      </span>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold block w-fit ${
-                        r.is_settled 
-                          ? 'bg-slate-800 text-slate-400 border border-slate-700' 
-                          : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                      }`}>
-                        {r.is_settled ? 'Cerrado en Caja' : 'Pendiente Arqueo'}
-                      </span>
-                    </div>
+                    {/* Deuda + Estado (solo visible para admin/superadmin) */}
+                    {isAdmin && (
+                      <div className="space-y-1">
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold leading-tight ${
+                          r.price === 0
+                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                            : isDebtBarber
+                              ? 'bg-rose-500/10 text-rose-400 border border-rose-500/30'
+                              : isDebtShop
+                                ? 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
+                                : 'bg-slate-800 text-slate-400'
+                        }`}>
+                          {r.price === 0 ? 'Sin deuda' : r.who_owes_whom}
+                        </span>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold block w-fit ${
+                          r.is_settled 
+                            ? 'bg-slate-800 text-slate-400 border border-slate-700' 
+                            : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                        }`}>
+                          {r.is_settled ? 'Liquidado en Caja' : 'Pendiente de liquidar'}
+                        </span>
+                      </div>
+                    )}
 
                     {/* Acción */}
                     {isAdmin && (
@@ -593,7 +614,12 @@ export const CutsTab = ({ user }) => {
             >
               {barbers.map(b => (
                 <option key={b.id} value={b.id}>
-                  {b.full_name} ({b.payment_scheme === 'commission' ? `${b.commission_percentage}% comisión` : 'Alquiler Fijo'})
+                  {b.full_name}
+                  {b.role === 'admin' || b.role === 'superadmin'
+                    ? ' (Administrador)'
+                    : b.payment_scheme === 'commission'
+                      ? ` (${b.commission_percentage}% comisión)`
+                      : ' (Alquiler Fijo)'}
                 </option>
               ))}
             </select>

@@ -83,7 +83,7 @@ export const DashboardTab = ({ setActiveTab, user }) => {
                 ${stats.current_cash_drawer?.toLocaleString('es-AR')} <span className="text-xs font-normal text-slate-400">ARS</span>
               </div>
               <p className="text-[11px] text-slate-400 mt-2">
-                Recaudado físicamente por administración pendiente de arqueo.
+                Recaudado físicamente por administración pendiente de control de caja.
               </p>
             </div>
 

@@ -3,7 +3,7 @@ import {
   Settings, Save, CheckCircle2, AlertCircle, Coins, 
   CreditCard, Calendar, Store, Phone, MapPin, Hash, Sparkles,
   ExternalLink, Navigation, HelpCircle, ShieldCheck, Palette,
-  Image as ImageIcon, Check, RefreshCw, Sliders, Plus, Trash2, ArrowUp, ArrowDown, UploadCloud, Eye
+  Image as ImageIcon, Check, RefreshCw, Sliders, Plus, Trash2, ArrowUp, ArrowDown, UploadCloud, Eye, Globe
 } from 'lucide-react';
 import { api } from '../../api';
 import { useAuth } from '../../context/AuthContext';
@@ -37,6 +37,9 @@ export const SettingsTab = () => {
   const [brandTagline, setBrandTagline] = useState('');
   const [brandName, setBrandName] = useState('');
   const [brandCustomColor, setBrandCustomColor] = useState('');
+  const [brandPageTabTitle, setBrandPageTabTitle] = useState('');
+  const [brandFaviconUrl, setBrandFaviconUrl] = useState('');
+  const [uploadingFavicon, setUploadingFavicon] = useState(false);
 
   // Banner Carousel states
   const [editingSlides, setEditingSlides] = useState([]);
@@ -58,6 +61,8 @@ export const SettingsTab = () => {
       setBrandTagline(map.barbershop_tagline || '');
       setBrandName(map.barbershop_name || '');
       setBrandCustomColor(map.custom_primary_color || '');
+      setBrandPageTabTitle(map.page_tab_title || '');
+      setBrandFaviconUrl(map.barbershop_favicon_url || '');
     } catch (err) {
       console.error('Error cargando configuraciones:', err);
       setErrorMsg('No se pudieron cargar las configuraciones del sistema.');
@@ -253,14 +258,40 @@ export const SettingsTab = () => {
         newLogoUrl: brandLogoUrl,
         newTagline: brandTagline,
         newCustomColor: brandCustomColor,
-        newName: brandName
+        newName: brandName,
+        newPageTabTitle: brandPageTabTitle,
+        newFaviconUrl: brandFaviconUrl
       });
-      setSuccessMsg('Personalización estética y logo guardados exitosamente');
+      setSuccessMsg('Personalización estética, logo, favicon y título guardados exitosamente');
       setTimeout(() => setSuccessMsg(''), 3500);
     } catch (err) {
       setErrorMsg(err.message || 'Error al guardar personalización de marca');
     } finally {
       setSavingKey(null);
+    }
+  };
+
+  const handleUploadFavicon = async (file) => {
+    if (!file) return;
+    setUploadingFavicon(true);
+    setErrorMsg('');
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', 'sistema');
+      formData.append('is_favicon', 'true');
+      const res = await api.uploadMedia(formData);
+      if (res?.success && res.url) {
+        setBrandFaviconUrl(res.url);
+        // Persistir inmediatamente el nuevo favicon para comodidad del usuario
+        await updateBranding({ newFaviconUrl: res.url });
+        setSuccessMsg(`Favicon optimizado, redimensionado a formato .ICO estándar (${res.filename})`);
+        setTimeout(() => setSuccessMsg(''), 3500);
+      }
+    } catch (err) {
+      setErrorMsg(err.message || 'Error al subir y procesar el favicon');
+    } finally {
+      setUploadingFavicon(false);
     }
   };
 
@@ -574,6 +605,155 @@ export const SettingsTab = () => {
               >
                 <Save className="w-4 h-4" />
                 <span>{savingKey === 'branding_superadmin' ? 'Guardando...' : 'Guardar Identidad & Marca'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Pestaña del Navegador & Favicon (SEO / Branding) */}
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-7 shadow-xl space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+              <div className="flex items-center space-x-3">
+                <div className="p-2.5 bg-amber-500/10 text-amber-400 rounded-xl border border-amber-500/20">
+                  <Globe className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white font-heading">
+                    Pestaña del Navegador & Favicon (SEO & Identidad)
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Modifica el texto visible en la pestaña del navegador (HTML &lt;title&gt;) y el icono oficial (Favicon) que verán los clientes al ingresar a la web.
+                  </p>
+                </div>
+              </div>
+
+              {/* Vista previa simulada de pestaña del navegador */}
+              <div className="w-full sm:w-auto min-w-[280px] bg-slate-950 p-3 rounded-2xl border border-slate-800 shadow-inner">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-2">
+                  Vista Previa en el Navegador:
+                </span>
+                <div className="flex items-center space-x-2.5 bg-slate-900 px-3 py-2 rounded-xl border border-slate-700/60 max-w-sm shadow-md">
+                  {brandFaviconUrl ? (
+                    <img 
+                      src={brandFaviconUrl} 
+                      alt="Favicon preview" 
+                      className="w-4 h-4 object-contain rounded shrink-0" 
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <span className="text-xs shrink-0">💈</span>
+                  )}
+                  <span className="text-xs font-medium text-slate-200 truncate flex-1 font-mono">
+                    {brandPageTabTitle || `${brandName || 'BarberShop Elite'} - ${brandTagline || 'Peluquería Masculina'}`}
+                  </span>
+                  <span className="text-slate-500 hover:text-slate-300 text-xs shrink-0 cursor-default">×</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Texto de la pestaña */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">
+                  Texto de la Pestaña (&lt;title&gt;)
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder={`Ej. ${brandName || 'BarberShop Elite'} - Peluquería & Reservas`}
+                    value={brandPageTabTitle}
+                    onChange={(e) => setBrandPageTabTitle(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white text-xs focus:outline-none focus:border-amber-500 transition-colors"
+                  />
+                  {brandPageTabTitle && (
+                    <button
+                      type="button"
+                      onClick={() => setBrandPageTabTitle('')}
+                      className="absolute right-3 top-3 text-[10px] text-slate-400 hover:text-amber-400 font-bold"
+                      title="Usar nombre de barbería + slogan por defecto"
+                    >
+                      Restablecer
+                    </button>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  Texto que verán los usuarios en la parte superior de Google Chrome, Safari, pestañas de celular y cuando compartan el enlace de la web.
+                </p>
+              </div>
+
+              {/* Favicon URL y subida */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">
+                  Favicon de la Pestaña (Conversión automática a .ICO)
+                </label>
+                <div className="flex items-center gap-2.5">
+                  <input
+                    type="text"
+                    placeholder="URL del icono o subí un archivo..."
+                    value={brandFaviconUrl}
+                    onChange={(e) => setBrandFaviconUrl(e.target.value)}
+                    className="flex-1 bg-slate-950 border border-slate-700 rounded-xl p-3 text-white text-xs font-mono focus:outline-none focus:border-amber-500 transition-colors"
+                  />
+                  
+                  {/* Botón de subida de archivo */}
+                  <label className={`px-4 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold cursor-pointer transition-all border border-slate-700 hover:border-amber-500/50 flex items-center space-x-1.5 shrink-0 ${
+                    uploadingFavicon ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}>
+                    <UploadCloud className="w-4 h-4 text-amber-400" />
+                    <span>{uploadingFavicon ? 'Procesando...' : 'Subir'}</span>
+                    <input
+                      type="file"
+                      accept="image/png,image/x-icon,image/svg+xml,image/webp,image/jpeg"
+                      onChange={(e) => e.target.files?.[0] && handleUploadFavicon(e.target.files[0])}
+                      className="hidden"
+                      disabled={uploadingFavicon}
+                    />
+                  </label>
+
+                  {/* Vista previa icono */}
+                  {brandFaviconUrl && (
+                    <div className="w-10 h-10 rounded-xl bg-slate-950 border border-slate-700 flex items-center justify-center p-1.5 shrink-0 overflow-hidden">
+                      <img 
+                        src={brandFaviconUrl} 
+                        alt="Favicon preview" 
+                        className="w-6 h-6 object-contain" 
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {brandFaviconUrl && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBrandFaviconUrl('');
+                        updateBranding({ newFaviconUrl: '' });
+                      }}
+                      className="p-2.5 text-slate-400 hover:text-rose-400 bg-slate-800/80 hover:bg-slate-800 rounded-xl transition-colors shrink-0"
+                      title="Quitar Favicon personalizado"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  Cualquier imagen que subas (PNG, JPG, SVG, WebP) se recortará automáticamente a formato cuadrado y se transformará en un archivo <strong className="text-amber-400">.ICO</strong> ultraliviano (&lt; 5 KB) con resoluciones estándar para todos los navegadores.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-3 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={handleSaveBranding}
+                disabled={savingKey === 'branding_superadmin'}
+                className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold rounded-xl text-xs transition-all shadow-lg shadow-amber-500/20 active:scale-95 flex items-center space-x-2"
+              >
+                <Save className="w-4 h-4" />
+                <span>{savingKey === 'branding_superadmin' ? 'Guardando...' : 'Guardar Pestaña & Favicon'}</span>
               </button>
             </div>
           </div>
@@ -1311,7 +1491,7 @@ export const SettingsTab = () => {
                   </li>
                   <li className="flex items-start space-x-2">
                     <span className="text-amber-400 font-bold">3.</span>
-                    <span><strong>Arqueo y Cierre:</strong> Un solo clic en "Caja & Arqueo" liquida y resetea las cuentas dejando comprobantes para cada barbero.</span>
+                    <span><strong>Control de Caja:</strong> Un solo clic en "Control de Caja" liquida y resetea las cuentas dejando comprobantes para cada barbero.</span>
                   </li>
                 </ul>
               </div>

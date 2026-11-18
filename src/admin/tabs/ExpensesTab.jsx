@@ -136,7 +136,7 @@ export const ExpensesTab = () => {
           <div className="text-xl font-extrabold text-rose-400 font-heading mt-1">
             ${(totalFixed + totalVariable).toLocaleString('es-AR')} <span className="text-xs font-normal text-slate-400">ARS</span>
           </div>
-          <span className="text-[10px] text-slate-500">Deducible del arqueo de caja</span>
+          <span className="text-[10px] text-slate-500">Deducible del control de caja</span>
         </div>
       </div>
 

@@ -3,6 +3,13 @@ import { Users, Plus, Edit, ShieldCheck, ShieldAlert, Phone, Mail, CheckCircle, 
 import { api } from '../../api';
 import { Modal, ConfirmDialog } from '../../components/common/Modal';
 
+const FREQUENCY_LABELS = {
+  daily: 'Diario / Turno',
+  weekly: 'Semanal',
+  biweekly: 'Quincenal',
+  monthly: 'Mensual'
+};
+
 export const BarbersTab = () => {
   const [barbers, setBarbers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -14,10 +21,12 @@ export const BarbersTab = () => {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState('barber'); // 'barber' | 'admin'
   const [paymentScheme, setPaymentScheme] = useState('commission'); // 'commission' | 'fixed_rent'
   const [commissionPercentage, setCommissionPercentage] = useState(50);
   const [fixedRentAmount, setFixedRentAmount] = useState(120000);
   const [fixedRentPeriod, setFixedRentPeriod] = useState('monthly');
+  const [payoutFrequency, setPayoutFrequency] = useState('daily'); // 'daily' | 'weekly' | 'biweekly' | 'monthly'
   const [modalError, setModalError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -27,7 +36,7 @@ export const BarbersTab = () => {
   const loadBarbers = async () => {
     setLoading(true);
     try {
-      const data = await api.getBarbers(true); // include inactive
+      const data = await api.getBarbers(true, true); // include inactive and admins
       setBarbers(data);
     } catch (err) {
       console.error('Error cargando barberos:', err);
@@ -46,10 +55,12 @@ export const BarbersTab = () => {
     setEmail('');
     setPhone('');
     setPassword('');
+    setRole('barber');
     setPaymentScheme('commission');
     setCommissionPercentage(50);
     setFixedRentAmount(120000);
     setFixedRentPeriod('monthly');
+    setPayoutFrequency('daily');
     setModalError('');
     setIsModalOpen(true);
   };
@@ -60,10 +71,12 @@ export const BarbersTab = () => {
     setEmail(b.email);
     setPhone(b.phone || '');
     setPassword(''); // optional on edit
+    setRole(b.role || 'barber');
     setPaymentScheme(b.payment_scheme || 'commission');
     setCommissionPercentage(b.commission_percentage || 50);
     setFixedRentAmount(b.fixed_rent_amount || 0);
     setFixedRentPeriod(b.fixed_rent_period || 'monthly');
+    setPayoutFrequency(b.payout_frequency || 'daily');
     setModalError('');
     setIsModalOpen(true);
   };
@@ -75,7 +88,7 @@ export const BarbersTab = () => {
       return;
     }
     if (!editingBarber && !password) {
-      setModalError('La contraseña inicial es obligatoria para nuevos barberos');
+      setModalError('La contraseña inicial es obligatoria para nuevos usuarios');
       return;
     }
 
@@ -87,11 +100,12 @@ export const BarbersTab = () => {
         full_name: fullName,
         email,
         phone: phone || null,
-        role: 'barber',
+        role: role,
         payment_scheme: paymentScheme,
         commission_percentage: parseFloat(commissionPercentage),
         fixed_rent_amount: parseFloat(fixedRentAmount) || 0,
-        fixed_rent_period: fixedRentPeriod
+        fixed_rent_period: fixedRentPeriod,
+        payout_frequency: payoutFrequency
       };
       if (password) {
         payload.password = password;
@@ -106,7 +120,7 @@ export const BarbersTab = () => {
       setIsModalOpen(false);
       loadBarbers();
     } catch (err) {
-      setModalError(err.message || 'Error al guardar barbero');
+      setModalError(err.message || 'Error al guardar usuario');
     } finally {
       setSubmitting(false);
     }
@@ -149,10 +163,10 @@ export const BarbersTab = () => {
       <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
         {/* Desktop Header */}
         <div className="hidden md:grid bg-slate-950 border-b border-slate-800 text-[11px] uppercase tracking-wider text-slate-400 font-semibold px-4 py-3"
-          style={{ gridTemplateColumns: '1.2fr 1fr 1fr 120px 120px' }}>
-          <div>Barbero</div>
+          style={{ gridTemplateColumns: '1.2fr 1fr 1.2fr 100px 120px' }}>
+          <div>Usuario / Rol</div>
           <div>Contacto</div>
-          <div>Esquema Económico</div>
+          <div>Liquidación & Esquema</div>
           <div>Estado</div>
           <div className="text-right">Acciones</div>
         </div>
@@ -164,7 +178,14 @@ export const BarbersTab = () => {
               <div className="flex flex-col gap-2 md:hidden text-xs">
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <span className="font-bold text-white text-sm block">{b.full_name}</span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-bold text-white text-sm block">{b.full_name}</span>
+                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
+                        b.role === 'admin' || b.role === 'superadmin' ? 'bg-purple-500/20 text-purple-300' : 'bg-amber-500/10 text-amber-300'
+                      }`}>
+                        {b.role === 'admin' ? 'Admin' : b.role === 'superadmin' ? 'SuperAdmin' : 'Barbero'}
+                      </span>
+                    </div>
                     <span className="text-[11px] text-slate-400">{b.email}</span>
                     {b.phone && <span className="text-[10px] text-slate-500 font-mono block">Tel: {b.phone}</span>}
                   </div>
@@ -177,17 +198,22 @@ export const BarbersTab = () => {
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-800/60">
-                  <div>
-                    <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider mr-1.5 ${
-                      b.payment_scheme === 'commission'
-                        ? 'bg-amber-500/10 text-amber-300 border border-amber-500/30'
-                        : 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/30'
-                    }`}>
-                      {b.payment_scheme === 'commission' ? 'Comisión' : 'Alquiler'}
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                        b.payment_scheme === 'commission'
+                          ? 'bg-amber-500/10 text-amber-300 border border-amber-500/30'
+                          : 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/30'
+                      }`}>
+                        {b.payment_scheme === 'commission' ? 'Comisión' : 'Alquiler'}
+                      </span>
+                      <strong className={b.payment_scheme === 'commission' ? 'text-amber-400 text-xs' : 'text-cyan-400 text-xs'}>
+                        {b.payment_scheme === 'commission' ? `${b.commission_percentage}%` : `$${b.fixed_rent_amount?.toLocaleString('es-AR')}`}
+                      </strong>
+                    </div>
+                    <span className="text-[10px] text-slate-400 block">
+                      Pago: <span className="text-white font-medium">{FREQUENCY_LABELS[b.payout_frequency] || 'Diario / Turno'}</span>
                     </span>
-                    <strong className={b.payment_scheme === 'commission' ? 'text-amber-400 text-xs' : 'text-cyan-400 text-xs'}>
-                      {b.payment_scheme === 'commission' ? `${b.commission_percentage}%` : `$${b.fixed_rent_amount?.toLocaleString('es-AR')} (${b.fixed_rent_period})`}
-                    </strong>
                   </div>
                   <div className="flex space-x-1.5">
                     <button
@@ -210,25 +236,37 @@ export const BarbersTab = () => {
 
               {/* Desktop layout */}
               <div className="hidden md:grid items-center gap-3 text-xs"
-                style={{ gridTemplateColumns: '1.2fr 1fr 1fr 120px 120px' }}>
+                style={{ gridTemplateColumns: '1.2fr 1fr 1.2fr 100px 120px' }}>
                 <div>
-                  <span className="font-bold text-white text-sm block truncate">{b.full_name}</span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-bold text-white text-sm block truncate">{b.full_name}</span>
+                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
+                      b.role === 'admin' || b.role === 'superadmin' ? 'bg-purple-500/20 text-purple-300' : 'bg-amber-500/10 text-amber-300'
+                    }`}>
+                      {b.role === 'admin' ? 'Admin' : b.role === 'superadmin' ? 'SuperAdmin' : 'Barbero'}
+                    </span>
+                  </div>
                 </div>
                 <div className="truncate">
                   <span className="text-slate-300 block truncate">{b.email}</span>
                   <span className="text-[10px] text-slate-500 font-mono block">{b.phone || 'Sin teléfono'}</span>
                 </div>
-                <div>
-                  <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider mr-1.5 ${
-                    b.payment_scheme === 'commission'
-                      ? 'bg-amber-500/10 text-amber-300 border border-amber-500/30'
-                      : 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/30'
-                  }`}>
-                    {b.payment_scheme === 'commission' ? 'Comisión' : 'Alquiler'}
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                      b.payment_scheme === 'commission'
+                        ? 'bg-amber-500/10 text-amber-300 border border-amber-500/30'
+                        : 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/30'
+                    }`}>
+                      {b.payment_scheme === 'commission' ? 'Comisión' : 'Alquiler'}
+                    </span>
+                    <strong className={b.payment_scheme === 'commission' ? 'text-amber-400 text-xs' : 'text-cyan-400 text-xs'}>
+                      {b.payment_scheme === 'commission' ? `${b.commission_percentage}%` : `$${b.fixed_rent_amount?.toLocaleString('es-AR')} (${b.fixed_rent_period})`}
+                    </strong>
+                  </div>
+                  <span className="text-[10px] text-slate-400 block">
+                    Cierre: <span className="text-slate-200 font-semibold">{FREQUENCY_LABELS[b.payout_frequency] || 'Diario / Turno'}</span>
                   </span>
-                  <strong className={b.payment_scheme === 'commission' ? 'text-amber-400 text-xs' : 'text-cyan-400 text-xs'}>
-                    {b.payment_scheme === 'commission' ? `${b.commission_percentage}%` : `$${b.fixed_rent_amount?.toLocaleString('es-AR')} (${b.fixed_rent_period})`}
-                  </strong>
                 </div>
                 <div>
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -324,6 +362,34 @@ export const BarbersTab = () => {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white"
             />
+          </div>
+
+          {/* Rol y Frecuencia de Liquidación */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-bold text-slate-300 mb-1">Rol de Usuario *</label>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white"
+              >
+                <option value="barber">Barbero</option>
+                <option value="admin">Administrador</option>
+              </select>
+            </div>
+            <div>
+              <label className="block font-bold text-slate-300 mb-1">Liquidación (Cierre de Caja) *</label>
+              <select
+                value={payoutFrequency}
+                onChange={(e) => setPayoutFrequency(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white"
+              >
+                <option value="daily">Por Día / Turno (Recomendado)</option>
+                <option value="weekly">Semanal</option>
+                <option value="biweekly">Quincenal</option>
+                <option value="monthly">Mensual</option>
+              </select>
+            </div>
           </div>
 
           {/* Scheme selector */}

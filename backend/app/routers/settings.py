@@ -39,7 +39,9 @@ def get_default_settings():
         "section_about_enabled": ("true", "Mostrar u ocultar la sección de Historia / Sobre Nosotros en la web"),
         "section_gallery_enabled": ("true", "Mostrar u ocultar la sección de Galería de Fotos en la web"),
         "section_team_enabled": ("true", "Mostrar u ocultar la sección de Nuestro Equipo en la web"),
-        "section_contact_enabled": ("true", "Mostrar u ocultar la sección de Contacto y Horarios en la web")
+        "section_contact_enabled": ("true", "Mostrar u ocultar la sección de Contacto y Horarios en la web"),
+        "page_tab_title": (os.getenv("BARBERSHOP_NAME", "BarberShop Elite") + " - Peluquería Masculina de Lujo", "Texto de la pestaña del navegador (HTML Title)"),
+        "barbershop_favicon_url": ("", "URL o ruta del favicon de la pestaña del navegador")
     }
 
 def ensure_default_settings(db: Session):
