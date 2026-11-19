@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from backend.app.database import get_db
 from backend.app.models import ServiceRecord, Service, User, Customer, Product, LoyaltyTransaction, SystemSetting
-from backend.app.schemas import ServiceRecordCreate, ServiceRecordOut
+from backend.app.schemas import ServiceRecordCreate, ServiceRecordUpdate, ServiceRecordOut
 from backend.app.auth import require_barber_or_admin, require_admin, get_current_user
 from backend.app.utils import phones_match
 
@@ -155,16 +155,22 @@ def record_service_cut(
             barber_earnings = price
             shop_earnings = 0.0
 
-        # Normal Loyalty points calculation
-        points_setting = db.query(SystemSetting).filter(SystemSetting.key == "points_per_cut").first()
-        try:
-            points_awarded = int(points_setting.value) if points_setting else 10
-        except (ValueError, TypeError):
-            points_awarded = 10
+        # Check if loyalty program is enabled in system
+        loyalty_setting = db.query(SystemSetting).filter(SystemSetting.key == "loyalty_program_enabled").first()
+        is_loyalty_enabled = (loyalty_setting.value.lower() == "true") if loyalty_setting else True
 
-        if customer_id and points_awarded > 0:
+        points_awarded = 0
+        # Puntos solo se otorgan SI el programa está activo Y hay un cliente seleccionado
+        if is_loyalty_enabled and customer_id:
+            points_setting = db.query(SystemSetting).filter(SystemSetting.key == "points_per_cut").first()
+            try:
+                base_points = int(points_setting.value) if points_setting else 10
+            except (ValueError, TypeError):
+                base_points = 10
+
             cust = db.query(Customer).filter(Customer.id == customer_id).first()
-            if cust:
+            if cust and base_points > 0:
+                points_awarded = base_points
                 cust.loyalty_points += points_awarded
                 tx = LoyaltyTransaction(
                     customer_id=customer_id,
@@ -263,6 +269,139 @@ def list_service_records(
         results.append(item)
     return results
 
+@router.put("/{record_id}", response_model=ServiceRecordOut)
+def update_service_record(
+    record_id: int,
+    record_in: ServiceRecordUpdate,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin)
+):
+    record = db.query(ServiceRecord).filter(ServiceRecord.id == record_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="Registro de corte no encontrado")
+
+    # Check loyalty program setting
+    loyalty_setting = db.query(SystemSetting).filter(SystemSetting.key == "loyalty_program_enabled").first()
+    is_loyalty_enabled = (loyalty_setting.value.lower() == "true") if loyalty_setting else True
+
+    # 1. Customer lookup or creation if name/phone provided
+    new_customer_id = record_in.customer_id
+    if record_in.customer_phone or record_in.customer_name:
+        all_customers = db.query(Customer).all()
+        existing_c = None
+        for c in all_customers:
+            if record_in.customer_phone and phones_match(c.phone, record_in.customer_phone):
+                existing_c = c
+                break
+        if existing_c:
+            new_customer_id = existing_c.id
+            if record_in.customer_name and (not existing_c.full_name or existing_c.full_name == "Cliente"):
+                existing_c.full_name = record_in.customer_name.strip()
+        elif record_in.customer_name or record_in.customer_phone:
+            new_c = Customer(
+                full_name=record_in.customer_name.strip() if record_in.customer_name else "Cliente",
+                phone=record_in.customer_phone.strip() if record_in.customer_phone else "S/T",
+                loyalty_points=0
+            )
+            db.add(new_c)
+            db.flush()
+            new_customer_id = new_c.id
+
+    # 2. Manage points change on customer update
+    old_customer_id = record.customer_id
+    old_points_awarded = record.loyalty_points_awarded or 0
+
+    if new_customer_id != old_customer_id:
+        # Revert points from previous customer
+        if old_customer_id and old_points_awarded > 0:
+            old_cust = db.query(Customer).filter(Customer.id == old_customer_id).first()
+            if old_cust:
+                old_cust.loyalty_points = max(0, old_cust.loyalty_points - old_points_awarded)
+                db.add(LoyaltyTransaction(
+                    customer_id=old_customer_id,
+                    points_change=-old_points_awarded,
+                    reason=f"Desvinculación de corte #{record.id}",
+                    reference_id=f"service_unlink_{record.id}"
+                ))
+
+        # Award points to new customer if loyalty is active and service price > 0
+        new_points = 0
+        if new_customer_id and is_loyalty_enabled and record.price > 0:
+            points_setting = db.query(SystemSetting).filter(SystemSetting.key == "points_per_cut").first()
+            try:
+                base_points = int(points_setting.value) if points_setting else 10
+            except Exception:
+                base_points = 10
+            new_cust = db.query(Customer).filter(Customer.id == new_customer_id).first()
+            if new_cust and base_points > 0:
+                new_points = base_points
+                new_cust.loyalty_points += new_points
+                db.add(LoyaltyTransaction(
+                    customer_id=new_customer_id,
+                    points_change=new_points,
+                    reason=f"Asignación de corte #{record.id}: {record.service.name if record.service else 'Servicio'}",
+                    reference_id=f"service_edit_{record.id}"
+                ))
+
+        record.customer_id = new_customer_id
+        record.loyalty_points_awarded = new_points
+
+    # 3. Update notes
+    if record_in.notes is not None:
+        record.notes = record_in.notes
+
+    # 4. If record is not settled, allow modifying service, barber, price, payment
+    if not record.is_settled:
+        if record_in.service_id:
+            service = db.query(Service).filter(Service.id == record_in.service_id).first()
+            if service:
+                record.service_id = service.id
+                record.duration_minutes = service.duration_minutes
+
+        if record_in.barber_id:
+            barber = db.query(User).filter(User.id == record_in.barber_id).first()
+            if barber:
+                record.barber_id = barber.id
+                record.barber_payout_scheme = barber.payment_scheme or "commission"
+                record.barber_rate = barber.commission_percentage if record.barber_payout_scheme == "commission" else 0.0
+
+        if record_in.price_override is not None:
+            record.price = record_in.price_override
+        elif record_in.service_id and record.service:
+            record.price = record.service.price
+
+        if record_in.collected_by:
+            record.collected_by = record_in.collected_by
+        if record_in.payment_method:
+            record.payment_method = record_in.payment_method
+
+        # Recalculate earnings
+        if record.barber:
+            is_admin_barber = record.barber.role in ("admin", "superadmin")
+            if is_admin_barber:
+                record.barber_earnings = 0.0
+                record.shop_earnings = record.price
+            elif record.barber_payout_scheme == "commission":
+                record.barber_earnings = record.price * (record.barber_rate / 100.0)
+                record.shop_earnings = record.price - record.barber_earnings
+            else:
+                record.barber_earnings = record.price
+                record.shop_earnings = 0.0
+
+    db.commit()
+    db.refresh(record)
+
+    out = ServiceRecordOut.model_validate(record)
+    out.service_name = record.service.name if record.service else "Servicio"
+    out.barber_name = record.barber.full_name if record.barber else "Barbero"
+    if record.customer:
+        out.customer_name = record.customer.full_name
+        out.customer_phone = record.customer.phone
+    out.who_owes_whom = calculate_who_owes_whom(
+        record.collected_by, record.payment_method, record.barber_earnings, record.shop_earnings, out.barber_name
+    )
+    return out
+
 @router.delete("/{record_id}")
 def delete_service_record(
     record_id: int,
@@ -274,6 +413,19 @@ def delete_service_record(
         raise HTTPException(status_code=404, detail="Registro de corte no encontrado")
     if record.is_settled:
         raise HTTPException(status_code=400, detail="No se puede eliminar un registro ya liquidado en un cierre de caja")
+
+    # Revert loyalty points awarded to customer if any
+    if record.customer_id and record.loyalty_points_awarded > 0:
+        cust = db.query(Customer).filter(Customer.id == record.customer_id).first()
+        if cust:
+            cust.loyalty_points = max(0, cust.loyalty_points - record.loyalty_points_awarded)
+            db.add(LoyaltyTransaction(
+                customer_id=record.customer_id,
+                points_change=-record.loyalty_points_awarded,
+                reason=f"Eliminación de corte #{record.id}",
+                reference_id=f"service_del_{record.id}"
+            ))
+
     db.delete(record)
     db.commit()
     return {"message": "Registro eliminado exitosamente"}

@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api/media", tags=["Gestión de Medios & Galería"])
 
 # Base directory for uploads (Project root)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-UPLOADS_ROOT = os.path.join(BASE_DIR, "uploads")
+UPLOADS_ROOT = os.getenv("UPLOADS_DIR", os.path.join(BASE_DIR, "uploads"))
 
 VALID_FOLDERS = ["banner", "galeria", "equipo", "videos", "sistema", "favicon"]
 

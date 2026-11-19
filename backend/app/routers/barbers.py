@@ -117,3 +117,40 @@ def toggle_or_delete_barber(
     estado = "activado" if barber.is_active else "suspendido/desactivado"
     return {"message": f"Barbero {barber.full_name} ha sido {estado}", "is_active": barber.is_active}
 
+
+@router.delete("/{barber_id}/hard-delete")
+def hard_delete_barber(
+    barber_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin)
+):
+    """Elimina permanentemente una cuenta suspendida. No aplica a SuperAdmin."""
+    from backend.app.models import ServiceRecord, ProductSale, Booking, CashClosing
+
+    barber = db.query(User).filter(User.id == barber_id).first()
+    if not barber:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    if barber.role == "superadmin":
+        raise HTTPException(status_code=403, detail="No se puede eliminar la cuenta del SuperAdmin")
+    if barber.is_active:
+        raise HTTPException(status_code=400, detail="La cuenta debe estar suspendida antes de poder eliminarla")
+
+    # Verificar si tiene registros de cortes (barber_id NOT NULL en service_records)
+    record_count = db.query(ServiceRecord).filter(ServiceRecord.barber_id == barber_id).count()
+    if record_count > 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"No se puede eliminar: el usuario tiene {record_count} registros de cortes asociados. La cuenta puede mantenerse suspendida."
+        )
+
+    # Anular referencias opcionales en otras tablas
+    db.query(ProductSale).filter(ProductSale.barber_id == barber_id).update({"barber_id": None})
+    db.query(Booking).filter(Booking.barber_id == barber_id).update({"barber_id": None})
+    db.query(CashClosing).filter(CashClosing.barber_id == barber_id).update({"barber_id": None})
+    db.query(CashClosing).filter(CashClosing.closed_by_id == barber_id).update({"closed_by_id": admin.id})
+
+    nombre = barber.full_name
+    db.delete(barber)
+    db.commit()
+    return {"message": f"Usuario {nombre} eliminado permanentemente del sistema"}
+

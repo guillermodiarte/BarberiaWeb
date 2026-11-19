@@ -98,6 +98,7 @@ export const api = {
   createBarber: (data) => apiRequest('/barbers', { method: 'POST', body: JSON.stringify(data) }),
   updateBarber: (id, data) => apiRequest(`/barbers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   toggleBarber: (id) => apiRequest(`/barbers/${id}`, { method: 'DELETE' }),
+  deleteBarber: (id) => apiRequest(`/barbers/${id}/hard-delete`, { method: 'DELETE' }),
 
   // Service Records (Cortes - CRM)
   getServiceRecords: (params = {}) => {
@@ -105,6 +106,7 @@ export const api = {
     return apiRequest(`/service-records?${query}`);
   },
   createServiceRecord: (data) => apiRequest('/service-records', { method: 'POST', body: JSON.stringify(data) }),
+  updateServiceRecord: (id, data) => apiRequest(`/service-records/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteServiceRecord: (id) => apiRequest(`/service-records/${id}`, { method: 'DELETE' }),
 
   // Inventory & Stock
@@ -167,6 +169,7 @@ export const api = {
   // Rewards
   getRewards: () => apiRequest('/rewards'),
   createReward: (data) => apiRequest('/rewards', { method: 'POST', body: JSON.stringify(data) }),
+  updateReward: (id, data) => apiRequest(`/rewards/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteReward: (id) => apiRequest(`/rewards/${id}`, { method: 'DELETE' }),
   redeemReward: (customerId, rewardId) =>
     apiRequest('/rewards/redeem', {

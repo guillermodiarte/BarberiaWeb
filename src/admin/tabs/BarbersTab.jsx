@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Plus, Edit, ShieldCheck, ShieldAlert, Phone, Mail, CheckCircle, Ban } from 'lucide-react';
+import { Users, Plus, Edit, ShieldCheck, ShieldAlert, Phone, Mail, CheckCircle, Ban, Trash2 } from 'lucide-react';
 import { api } from '../../api';
 import { Modal, ConfirmDialog } from '../../components/common/Modal';
+import { useAuth } from '../../context/AuthContext';
 
 const FREQUENCY_LABELS = {
   daily: 'Diario / Turno',
@@ -11,6 +12,9 @@ const FREQUENCY_LABELS = {
 };
 
 export const BarbersTab = () => {
+  const { user: currentUser } = useAuth();
+  const isSuperAdmin = currentUser?.role === 'superadmin';
+
   const [barbers, setBarbers] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -32,6 +36,10 @@ export const BarbersTab = () => {
 
   // Toggle active confirmation
   const [toggleBarberObj, setToggleBarberObj] = useState(null);
+
+  // Delete confirmation
+  const [deleteBarberObj, setDeleteBarberObj] = useState(null);
+  const [deleteError, setDeleteError] = useState('');
 
   const loadBarbers = async () => {
     setLoading(true);
@@ -137,8 +145,29 @@ export const BarbersTab = () => {
     }
   };
 
+  const handleDeleteBarber = async () => {
+    if (!deleteBarberObj) return;
+    setDeleteError('');
+    try {
+      await api.deleteBarber(deleteBarberObj.id);
+      setDeleteBarberObj(null);
+      loadBarbers();
+    } catch (err) {
+      const msg = err.message || 'Error al eliminar usuario';
+      setDeleteBarberObj(null);
+      setDeleteError(msg);
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Error de eliminación */}
+      {deleteError && (
+        <div className="p-3 bg-rose-500/10 border border-rose-500/30 text-rose-400 rounded-xl text-sm flex justify-between items-start gap-2">
+          <span>{deleteError}</span>
+          <button onClick={() => setDeleteError('')} className="text-rose-300 hover:text-rose-100 font-bold shrink-0">✕</button>
+        </div>
+      )}
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -163,7 +192,7 @@ export const BarbersTab = () => {
       <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
         {/* Desktop Header */}
         <div className="hidden md:grid bg-slate-950 border-b border-slate-800 text-[11px] uppercase tracking-wider text-slate-400 font-semibold px-4 py-3"
-          style={{ gridTemplateColumns: '1.2fr 1fr 1.2fr 100px 120px' }}>
+          style={{ gridTemplateColumns: '1.2fr 1fr 1.2fr 90px 220px' }}>
           <div>Usuario / Rol</div>
           <div>Contacto</div>
           <div>Liquidación & Esquema</div>
@@ -222,21 +251,37 @@ export const BarbersTab = () => {
                     >
                       Editar
                     </button>
-                    <button
-                      onClick={() => setToggleBarberObj(b)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${
-                        b.is_active ? 'bg-rose-950/40 text-rose-300' : 'bg-emerald-950/40 text-emerald-300'
-                      }`}
-                    >
-                      {b.is_active ? 'Suspender' : 'Reactivar'}
-                    </button>
+                    {b.role === 'superadmin' ? (
+                      <span className="px-2 py-1 text-[10px] text-slate-500 italic self-center">Protegida</span>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => setToggleBarberObj(b)}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${
+                            b.is_active ? 'bg-rose-950/40 text-rose-300' : 'bg-emerald-950/40 text-emerald-300'
+                          }`}
+                        >
+                          {b.is_active ? 'Suspender' : 'Reactivar'}
+                        </button>
+                        {!b.is_active && (
+                          <button
+                            onClick={() => setDeleteBarberObj(b)}
+                            className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-rose-950/60 text-rose-300 hover:bg-rose-900/80 transition-colors flex items-center gap-1"
+                            title="Eliminar permanentemente"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            Eliminar
+                          </button>
+                        )}
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
 
               {/* Desktop layout */}
               <div className="hidden md:grid items-center gap-3 text-xs"
-                style={{ gridTemplateColumns: '1.2fr 1fr 1.2fr 100px 120px' }}>
+                style={{ gridTemplateColumns: '1.2fr 1fr 1.2fr 90px 220px' }}>
                 <div>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="font-bold text-white text-sm block truncate">{b.full_name}</span>
@@ -284,16 +329,32 @@ export const BarbersTab = () => {
                   >
                     Editar
                   </button>
-                  <button
-                    onClick={() => setToggleBarberObj(b)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
-                      b.is_active
-                        ? 'bg-rose-950/40 text-rose-300 hover:bg-rose-900/60'
-                        : 'bg-emerald-950/40 text-emerald-300 hover:bg-emerald-900/60'
-                    }`}
-                  >
-                    {b.is_active ? 'Suspender' : 'Activar'}
-                  </button>
+                  {b.role === 'superadmin' ? (
+                    <span className="px-2 py-1 text-[10px] text-slate-500 italic self-center">Protegida</span>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => setToggleBarberObj(b)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                          b.is_active
+                            ? 'bg-rose-950/40 text-rose-300 hover:bg-rose-900/60'
+                            : 'bg-emerald-950/40 text-emerald-300 hover:bg-emerald-900/60'
+                        }`}
+                      >
+                        {b.is_active ? 'Suspender' : 'Activar'}
+                      </button>
+                      {!b.is_active && (
+                        <button
+                          onClick={() => setDeleteBarberObj(b)}
+                          className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-rose-950/60 text-rose-300 hover:bg-rose-900/80 transition-colors flex items-center gap-1"
+                          title="Eliminar permanentemente"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          Eliminar
+                        </button>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -508,6 +569,19 @@ export const BarbersTab = () => {
           }
           isDanger={toggleBarberObj.is_active}
           confirmText={toggleBarberObj.is_active ? 'Sí, Suspender Cuenta' : 'Sí, Reactivar Cuenta'}
+        />
+      )}
+
+      {/* Delete confirmation */}
+      {deleteBarberObj && (
+        <ConfirmDialog
+          isOpen={true}
+          onClose={() => setDeleteBarberObj(null)}
+          onConfirm={handleDeleteBarber}
+          title="Eliminar Cuenta Permanentemente"
+          message={`¿Estás seguro de que deseas eliminar permanentemente la cuenta de ${deleteBarberObj?.full_name}? Esta acción no se puede deshacer. Si el usuario tiene registros de cortes asociados, la eliminación no será posible.`}
+          isDanger={true}
+          confirmText="Sí, Eliminar Permanentemente"
         />
       )}
     </div>

@@ -167,6 +167,17 @@ class ServiceRecordCreate(BaseModel):
     redeem_free_cut: Optional[bool] = False  # Redeem points for a 100% free cut
     notes: Optional[str] = None
 
+class ServiceRecordUpdate(BaseModel):
+    service_id: Optional[int] = None
+    barber_id: Optional[int] = None
+    customer_id: Optional[int] = None
+    customer_name: Optional[str] = None
+    customer_phone: Optional[str] = None
+    price_override: Optional[float] = None
+    collected_by: Optional[str] = None
+    payment_method: Optional[str] = None
+    notes: Optional[str] = None
+
 class ServiceRecordOut(BaseModel):
     id: int
     service_id: int
@@ -261,6 +272,14 @@ class LoyaltyRewardCreate(BaseModel):
     points_required: int
     reward_type: str = "free_service"
     discount_value: float = 0.0
+
+class LoyaltyRewardUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    points_required: Optional[int] = None
+    reward_type: Optional[str] = None
+    discount_value: Optional[float] = None
+    is_active: Optional[bool] = None
 
 class LoyaltyRewardOut(BaseModel):
     id: int

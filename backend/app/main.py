@@ -59,10 +59,10 @@ app.include_router(stats.router)
 app.include_router(media.router)
 
 # Mount uploads static files directory
-UPLOADS_DIR = os.path.join(
+UPLOADS_DIR = os.getenv("UPLOADS_DIR", os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
     "uploads"
-)
+))
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 

@@ -26,13 +26,15 @@ export const LoyaltyTab = ({ user }) => {
   const [redeeming, setRedeeming] = useState(false);
   const [redeemSuccessMsg, setRedeemSuccessMsg] = useState('');
 
-  // Create Reward modal (admin only)
+  // Create / Edit Reward modal (admin only)
   const [isRewardModalOpen, setIsRewardModalOpen] = useState(false);
+  const [editingRewardId, setEditingRewardId] = useState(null);
   const [rewardTitle, setRewardTitle] = useState('');
   const [rewardDesc, setRewardDesc] = useState('');
   const [rewardPoints, setRewardPoints] = useState(50);
   const [rewardType, setRewardType] = useState('free_service');
   const [rewardValue, setRewardValue] = useState(100);
+  const [rewardDeleteId, setRewardDeleteId] = useState(null);
 
   // Create Customer modal (admin only)
   const [isCreateCustomerOpen, setIsCreateCustomerOpen] = useState(false);
@@ -128,24 +130,69 @@ export const LoyaltyTab = ({ user }) => {
     }
   };
 
-  const handleCreateReward = async (e) => {
+  const handleSaveReward = async (e) => {
     e.preventDefault();
     if (!rewardTitle || !rewardPoints) return;
 
     try {
-      await api.createReward({
-        title: rewardTitle,
-        description: rewardDesc || null,
-        points_required: parseInt(rewardPoints),
-        reward_type: rewardType,
-        discount_value: parseFloat(rewardValue) || 0
-      });
+      if (editingRewardId) {
+        await api.updateReward(editingRewardId, {
+          title: rewardTitle,
+          description: rewardDesc || null,
+          points_required: parseInt(rewardPoints),
+          reward_type: rewardType,
+          discount_value: parseFloat(rewardValue) || 0
+        });
+      } else {
+        await api.createReward({
+          title: rewardTitle,
+          description: rewardDesc || null,
+          points_required: parseInt(rewardPoints),
+          reward_type: rewardType,
+          discount_value: parseFloat(rewardValue) || 0
+        });
+      }
       setIsRewardModalOpen(false);
+      setEditingRewardId(null);
       setRewardTitle('');
       setRewardDesc('');
       loadData();
     } catch (err) {
-      alert(err.message || 'Error al crear premio');
+      alert(err.message || 'Error al guardar premio');
+    }
+  };
+
+  const handleOpenEditReward = (r) => {
+    setEditingRewardId(r.id);
+    setRewardTitle(r.title);
+    setRewardDesc(r.description || '');
+    setRewardPoints(r.points_required);
+    setRewardType(r.reward_type || 'free_service');
+    setRewardValue(r.discount_value || 0);
+  };
+
+  const handleOpenCreateReward = () => {
+    setEditingRewardId(null);
+    setRewardTitle('');
+    setRewardDesc('');
+    setRewardPoints(50);
+    setRewardType('free_service');
+    setRewardValue(0);
+    setIsRewardModalOpen(true);
+  };
+
+  const handleDeleteReward = async (rewardId) => {
+    if (!window.confirm('¿Seguro que deseas eliminar este premio del catálogo?')) return;
+    try {
+      await api.deleteReward(rewardId);
+      if (editingRewardId === rewardId) {
+        setEditingRewardId(null);
+        setRewardTitle('');
+        setRewardDesc('');
+      }
+      loadData();
+    } catch (err) {
+      alert(err.message || 'Error al eliminar premio');
     }
   };
 
@@ -235,6 +282,7 @@ export const LoyaltyTab = ({ user }) => {
     }
   };
 
+  const isLoyaltyEnabled = systemSettings.loyalty_program_enabled !== 'false';
   const pointsForFreeCut = parseInt(systemSettings.points_for_free_cut || '50', 10);
 
   return (
@@ -247,9 +295,11 @@ export const LoyaltyTab = ({ user }) => {
             <span>Gestión de Clientes</span>
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            {isAdmin 
-              ? 'Administra la cartera de clientes, cortes acumulados, puntos y datos de contacto.'
-              : 'Consulta los clientes registrados, historial de servicios y saldo de puntos para canjes.'}
+            {isLoyaltyEnabled
+              ? (isAdmin 
+                  ? 'Administra la cartera de clientes, cortes acumulados, puntos y datos de contacto.'
+                  : 'Consulta los clientes registrados, historial de servicios y saldo de puntos para canjes.')
+              : 'Directorio de clientes, historial de visitas y datos de contacto.'}
           </p>
         </div>
 
@@ -264,9 +314,9 @@ export const LoyaltyTab = ({ user }) => {
             </button>
           )}
 
-          {isAdmin && (
+          {isAdmin && isLoyaltyEnabled && (
             <button
-              onClick={() => setIsRewardModalOpen(true)}
+              onClick={handleOpenCreateReward}
               className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-colors"
             >
               <Gift className="w-4 h-4 text-amber-400" />
@@ -299,7 +349,7 @@ export const LoyaltyTab = ({ user }) => {
           <div>Teléfono</div>
           <div className="text-center">Cortes</div>
           <div>Última Visita</div>
-          <div className="text-right">Puntos / Acciones</div>
+          <div className="text-right">{isLoyaltyEnabled ? 'Puntos / Acciones' : 'Acciones'}</div>
         </div>
 
         <div className="divide-y divide-slate-800/50">
@@ -309,7 +359,7 @@ export const LoyaltyTab = ({ user }) => {
             </div>
           ) : (
             customers.map((c) => {
-              const hasFreeCut = c.loyalty_points >= pointsForFreeCut;
+              const hasFreeCut = isLoyaltyEnabled && c.loyalty_points >= pointsForFreeCut;
               const lastVisitStr = c.last_visit 
                 ? new Date(c.last_visit).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' })
                 : '—';
@@ -324,19 +374,21 @@ export const LoyaltyTab = ({ user }) => {
                         {c.email && <span className="text-[11px] text-slate-500 block">{c.email}</span>}
                         <span className="text-[11px] text-slate-400 font-mono">{c.phone}</span>
                       </div>
-                      <div className="text-right">
-                        <span className={`inline-flex items-center space-x-1 px-2.5 py-1 rounded-full font-extrabold text-xs ${
-                          hasFreeCut 
-                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                            : 'bg-slate-950 text-slate-300 border border-slate-800'
-                        }`}>
-                          <Sparkles className="w-3 h-3 text-amber-400" />
-                          <span>{c.loyalty_points} pts</span>
-                        </span>
-                        {hasFreeCut && (
-                          <span className="text-[9px] text-emerald-400 font-bold block mt-0.5">¡Corte Gratis!</span>
-                        )}
-                      </div>
+                      {isLoyaltyEnabled && (
+                        <div className="text-right">
+                          <span className={`inline-flex items-center space-x-1 px-2.5 py-1 rounded-full font-extrabold text-xs ${
+                            hasFreeCut 
+                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                              : 'bg-slate-950 text-slate-300 border border-slate-800'
+                          }`}>
+                            <Sparkles className="w-3 h-3 text-amber-400" />
+                            <span>{c.loyalty_points} pts</span>
+                          </span>
+                          {hasFreeCut && (
+                            <span className="text-[9px] text-emerald-400 font-bold block mt-0.5">¡Corte Gratis!</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center gap-1.5 flex-wrap text-[11px]">
                       <span className="text-slate-500"><Scissors className="w-3 h-3 text-amber-400 inline mr-0.5" />{c.cuts_count || 0} cortes</span>
@@ -349,8 +401,12 @@ export const LoyaltyTab = ({ user }) => {
                           <Pencil className="w-3 h-3" /><span>Editar</span>
                         </button>
                       )}
-                      <button onClick={() => handleOpenRedeem(c)} disabled={c.loyalty_points < 40} className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-slate-950 font-bold rounded-lg text-xs transition-colors">Canjear</button>
-                      <button onClick={() => handleOpenHistory(c)} className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold transition-colors">Historial</button>
+                      {isLoyaltyEnabled && (
+                        <>
+                          <button onClick={() => handleOpenRedeem(c)} disabled={c.loyalty_points < 40} className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-slate-950 font-bold rounded-lg text-xs transition-colors">Canjear</button>
+                          <button onClick={() => handleOpenHistory(c)} className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold transition-colors">Historial</button>
+                        </>
+                      )}
                       {isAdmin && (
                         <button onClick={() => setDeleteCustomerTarget(c)} className="p-1 text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors">
                           <Trash2 className="w-3.5 h-3.5" />
@@ -384,24 +440,32 @@ export const LoyaltyTab = ({ user }) => {
 
                     {/* Puntos + Acciones */}
                     <div className="flex items-center justify-end gap-1.5 flex-wrap">
-                      <span className={`inline-flex items-center space-x-1 px-2.5 py-1 rounded-full font-extrabold text-xs shrink-0 ${
-                        hasFreeCut 
-                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
-                          : 'bg-slate-950 text-slate-300 border border-slate-800'
-                      }`}>
-                        <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                        <span>{c.loyalty_points} pts</span>
-                      </span>
-                      {hasFreeCut && (
-                        <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded text-[10px] font-extrabold uppercase shrink-0">¡Gratis!</span>
+                      {isLoyaltyEnabled && (
+                        <>
+                          <span className={`inline-flex items-center space-x-1 px-2.5 py-1 rounded-full font-extrabold text-xs shrink-0 ${
+                            hasFreeCut 
+                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
+                              : 'bg-slate-950 text-slate-300 border border-slate-800'
+                          }`}>
+                            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                            <span>{c.loyalty_points} pts</span>
+                          </span>
+                          {hasFreeCut && (
+                            <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded text-[10px] font-extrabold uppercase shrink-0">¡Gratis!</span>
+                          )}
+                        </>
                       )}
                       {isAdmin && (
                         <button onClick={() => handleOpenEdit(c)} className="px-2 py-1 bg-amber-500/10 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30 rounded-lg text-xs font-bold inline-flex items-center space-x-1 transition-colors shrink-0" title="Editar">
                           <Pencil className="w-3 h-3" /><span>Editar</span>
                         </button>
                       )}
-                      <button onClick={() => handleOpenRedeem(c)} disabled={c.loyalty_points < 40} className="px-2 py-1 bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-slate-950 font-bold rounded-lg text-xs transition-colors shrink-0" title="Canjear">Canjear</button>
-                      <button onClick={() => handleOpenHistory(c)} className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold transition-colors shrink-0" title="Historial">Historial</button>
+                      {isLoyaltyEnabled && (
+                        <>
+                          <button onClick={() => handleOpenRedeem(c)} disabled={c.loyalty_points < 40} className="px-2 py-1 bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-slate-950 font-bold rounded-lg text-xs transition-colors shrink-0" title="Canjear">Canjear</button>
+                          <button onClick={() => handleOpenHistory(c)} className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold transition-colors shrink-0" title="Historial">Historial</button>
+                        </>
+                      )}
                       {isAdmin && (
                         <button onClick={() => setDeleteCustomerTarget(c)} className="p-1 text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors shrink-0" title="Eliminar">
                           <Trash2 className="w-3.5 h-3.5" />
@@ -563,7 +627,7 @@ export const LoyaltyTab = ({ user }) => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className={`grid grid-cols-1 ${isLoyaltyEnabled ? 'sm:grid-cols-2' : ''} gap-3`}>
               <div>
                 <label className="block font-bold text-slate-300 mb-1">Email (Opcional)</label>
                 <input
@@ -575,16 +639,18 @@ export const LoyaltyTab = ({ user }) => {
                 />
               </div>
 
-              <div>
-                <label className="block font-bold text-amber-400 mb-1">⭐ Puntos Acumulados</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={editLoyaltyPoints}
-                  onChange={(e) => setEditLoyaltyPoints(e.target.value)}
-                  className="w-full bg-slate-950 border border-amber-500/40 rounded-xl p-2.5 text-amber-400 font-bold font-mono focus:outline-none focus:border-amber-500"
-                />
-              </div>
+              {isLoyaltyEnabled && (
+                <div>
+                  <label className="block font-bold text-amber-400 mb-1">⭐ Puntos Acumulados</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editLoyaltyPoints}
+                    onChange={(e) => setEditLoyaltyPoints(e.target.value)}
+                    className="w-full bg-slate-950 border border-amber-500/40 rounded-xl p-2.5 text-amber-400 font-bold font-mono focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              )}
             </div>
 
             <div>
@@ -743,66 +809,146 @@ export const LoyaltyTab = ({ user }) => {
         </Modal>
       )}
 
-      {/* Modal: Crear Premio */}
-      {isAdmin && (
+      {/* Modal: Configurar Premios / Canjes */}
+      {isAdmin && isRewardModalOpen && (
         <Modal
-          isOpen={isRewardModalOpen}
-          onClose={() => setIsRewardModalOpen(false)}
-          title="Crear Nueva Recompensa / Premio"
-          maxWidth="max-w-md"
+          isOpen={true}
+          onClose={() => {
+            setIsRewardModalOpen(false);
+            setEditingRewardId(null);
+          }}
+          title="Catálogo de Premios y Canjes (Fidelización)"
+          maxWidth="max-w-xl"
         >
-          <form onSubmit={handleCreateReward} className="space-y-4 text-xs">
-            <div>
-              <label className="block font-bold text-slate-300 mb-1">Título de la Recompensa *</label>
-              <input
-                type="text"
-                required
-                placeholder="Ej. Descuento en Cera o Aceite"
-                value={rewardTitle}
-                onChange={(e) => setRewardTitle(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white"
-              />
+          <div className="space-y-5 text-xs">
+            {/* List of existing rewards */}
+            <div className="space-y-2">
+              <span className="font-bold text-slate-300 uppercase tracking-wider block">Premios Actuales en el Sistema</span>
+              {rewards.length === 0 ? (
+                <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl text-center text-slate-500">
+                  No hay premios configurados.
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {rewards.map(r => (
+                    <div
+                      key={r.id}
+                      className={`p-3 rounded-xl border flex items-center justify-between gap-3 transition-colors ${
+                        editingRewardId === r.id
+                          ? 'bg-amber-500/10 border-amber-500/50'
+                          : 'bg-slate-950 border-slate-800'
+                      }`}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center space-x-2">
+                          <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 font-bold rounded-full text-[10px]">
+                            {r.points_required} pts
+                          </span>
+                          <span className="font-bold text-white truncate">{r.title}</span>
+                        </div>
+                        {r.description && <p className="text-[11px] text-slate-400 truncate mt-0.5">{r.description}</p>}
+                      </div>
+                      <div className="flex items-center space-x-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditReward(r)}
+                          className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 font-bold rounded-lg text-xs"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteReward(r.id)}
+                          className="p-1 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
-            <div>
-              <label className="block font-bold text-slate-300 mb-1">Puntos Requeridos *</label>
-              <input
-                type="number"
-                min="10"
-                required
-                value={rewardPoints}
-                onChange={(e) => setRewardPoints(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-amber-400 font-bold text-base"
-              />
-            </div>
+            {/* Form to create or edit */}
+            <form onSubmit={handleSaveReward} className="p-4 bg-slate-950/80 border border-slate-800 rounded-2xl space-y-3">
+              <div className="flex items-center justify-between pb-1">
+                <span className="font-bold text-amber-400 uppercase tracking-wider block">
+                  {editingRewardId ? `Editar Premio #${editingRewardId}` : '+ Agregar Nuevo Premio'}
+                </span>
+                {editingRewardId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingRewardId(null);
+                      setRewardTitle('');
+                      setRewardDesc('');
+                      setRewardPoints(50);
+                    }}
+                    className="text-slate-400 hover:text-white underline text-[11px]"
+                  >
+                    Cancelar edición
+                  </button>
+                )}
+              </div>
 
-            <div>
-              <label className="block font-bold text-slate-300 mb-1">Descripción para el Cliente</label>
-              <textarea
-                rows={2}
-                placeholder="Condiciones del canje..."
-                value={rewardDesc}
-                onChange={(e) => setRewardDesc(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white"
-              />
-            </div>
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Título de la Recompensa *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ej. $3.000 ARS de Descuento Directo"
+                  value={rewardTitle}
+                  onChange={(e) => setRewardTitle(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-amber-500"
+                />
+              </div>
 
-            <div className="flex justify-end space-x-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setIsRewardModalOpen(false)}
-                className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl"
-              >
-                Guardar Recompensa
-              </button>
-            </div>
-          </form>
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Puntos Requeridos *</label>
+                <input
+                  type="number"
+                  min="5"
+                  step="5"
+                  required
+                  value={rewardPoints}
+                  onChange={(e) => setRewardPoints(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-amber-400 font-bold font-mono focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Descripción para el Cliente</label>
+                <textarea
+                  rows={2}
+                  placeholder="Condiciones del canje..."
+                  value={rewardDesc}
+                  onChange={(e) => setRewardDesc(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsRewardModalOpen(false);
+                    setEditingRewardId(null);
+                  }}
+                  className="px-4 py-2 bg-slate-800 text-slate-300 hover:text-white rounded-xl"
+                >
+                  Cerrar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl active:scale-95 transition-all shadow-md"
+                >
+                  {editingRewardId ? 'Guardar Cambios' : 'Crear Premio'}
+                </button>
+              </div>
+            </form>
+          </div>
         </Modal>
       )}
 

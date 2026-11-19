@@ -284,8 +284,14 @@ export const ExpensesTab = () => {
               type="date"
               required
               value={expenseDate}
+              onClick={(e) => {
+                try { e.target.showPicker(); } catch (_) {}
+              }}
+              onFocus={(e) => {
+                try { e.target.showPicker(); } catch (_) {}
+              }}
               onChange={(e) => setExpenseDate(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
+              className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white cursor-pointer [color-scheme:dark]"
             />
           </div>
 

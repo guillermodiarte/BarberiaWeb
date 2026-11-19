@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from backend.app.database import get_db
 from backend.app.models import LoyaltyReward, Customer, LoyaltyTransaction, User
-from backend.app.schemas import LoyaltyRewardCreate, LoyaltyRewardOut, LoyaltyRedeemRequest
+from backend.app.schemas import LoyaltyRewardCreate, LoyaltyRewardUpdate, LoyaltyRewardOut, LoyaltyRedeemRequest
 from backend.app.auth import require_admin, require_barber_or_admin
 
 router = APIRouter(prefix="/api/rewards", tags=["Premios y Recompensas (Fidelización)"])
@@ -30,6 +30,32 @@ def create_reward(
     db.commit()
     db.refresh(reward)
     return reward
+
+@router.put("/{reward_id}", response_model=LoyaltyRewardOut)
+def update_reward(
+    reward_id: int,
+    rew_in: LoyaltyRewardUpdate,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin)
+):
+    rew = db.query(LoyaltyReward).filter(LoyaltyReward.id == reward_id).first()
+    if not rew:
+        raise HTTPException(status_code=404, detail="Premio no encontrado")
+    if rew_in.title is not None:
+        rew.title = rew_in.title
+    if rew_in.description is not None:
+        rew.description = rew_in.description
+    if rew_in.points_required is not None:
+        rew.points_required = rew_in.points_required
+    if rew_in.reward_type is not None:
+        rew.reward_type = rew_in.reward_type
+    if rew_in.discount_value is not None:
+        rew.discount_value = rew_in.discount_value
+    if rew_in.is_active is not None:
+        rew.is_active = rew_in.is_active
+    db.commit()
+    db.refresh(rew)
+    return rew
 
 @router.delete("/{reward_id}")
 def delete_reward(

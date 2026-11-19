@@ -64,6 +64,8 @@ function PublicLanding() {
   return (
     <>
       <Helmet>
+        <html lang="es" />
+        <meta name="google" content="notranslate" />
         <title>{finalTitle}</title>
         {faviconUrl && (
           <link 

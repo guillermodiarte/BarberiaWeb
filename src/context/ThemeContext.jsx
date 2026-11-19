@@ -280,11 +280,14 @@ export const ThemeProvider = ({ children }) => {
         if (publicSettings.online_booking_enabled !== undefined) {
           setOnlineBookingEnabled(publicSettings.online_booking_enabled !== 'false' && publicSettings.online_booking_enabled !== false);
         }
+        // Master loyalty program toggle: if disabled by SuperAdmin, loyalty section is always hidden
+        const isLoyaltyMasterEnabled = publicSettings.loyalty_program_enabled !== 'false' && publicSettings.loyalty_program_enabled !== false;
+        
         // Sync full sections visibility
         setSectionsVisibility({
           services: publicSettings.section_services_enabled !== 'false' && publicSettings.section_services_enabled !== false,
           booking: publicSettings.online_booking_enabled !== 'false' && publicSettings.online_booking_enabled !== false,
-          loyalty: publicSettings.section_loyalty_enabled !== 'false' && publicSettings.section_loyalty_enabled !== false,
+          loyalty: isLoyaltyMasterEnabled,
           about: publicSettings.section_about_enabled !== 'false' && publicSettings.section_about_enabled !== false,
           gallery: publicSettings.section_gallery_enabled !== 'false' && publicSettings.section_gallery_enabled !== false,
           team: publicSettings.section_team_enabled !== 'false' && publicSettings.section_team_enabled !== false,

@@ -161,3 +161,22 @@ body {
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.15);
 }
+
+/* Date input improvements: calendar dropdown on click & visible icon */
+input[type="date"] {
+    color-scheme: dark;
+    cursor: pointer;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.85;
+    filter: invert(0.85);
+    transition: opacity 0.15s ease, filter 0.15s ease, transform 0.15s ease;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+    filter: invert(1);
+    transform: scale(1.1);
+}

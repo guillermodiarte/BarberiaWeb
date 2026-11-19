@@ -31,6 +31,7 @@ const Header = () => {
 
   const menuItems = allMenuItems.filter(item => {
     if (item.key === 'hero') return true;
+    if (item.key === 'booking') return sectionsVisibility.booking !== false && onlineBookingEnabled;
     return sectionsVisibility[item.key] !== false;
   });
 

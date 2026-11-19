@@ -195,8 +195,14 @@ export const BookingSection = () => {
                     required
                     min={minDateStr}
                     value={bookingDate}
+                    onClick={(e) => {
+                      try { e.target.showPicker(); } catch (_) {}
+                    }}
+                    onFocus={(e) => {
+                      try { e.target.showPicker(); } catch (_) {}
+                    }}
                     onChange={(e) => setBookingDate(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500 transition-colors"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500 transition-colors cursor-pointer [color-scheme:dark]"
                   />
                 </div>
 

@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Scissors, Sparkles, Crown, Clock, Star, Check } from 'lucide-react';
 import { api } from '../api';
+import { useTheme } from '../context/ThemeContext';
 
 const Services = () => {
+  const { onlineBookingEnabled, sectionsVisibility = {} } = useTheme();
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -102,12 +104,14 @@ const Services = () => {
                   </div>
                 </div>
 
-                <a
-                  href="#reservas"
-                  className="w-full block text-center py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold rounded-xl text-xs transition-all shadow-md shadow-amber-500/20"
-                >
-                  Reservar este Servicio
-                </a>
+                {onlineBookingEnabled && sectionsVisibility.booking !== false && (
+                  <a
+                    href="#reservas"
+                    className="w-full block text-center py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold rounded-xl text-xs transition-all shadow-md shadow-amber-500/20"
+                  >
+                    Reservar este Servicio
+                  </a>
+                )}
               </div>
             </motion.div>
           ))}

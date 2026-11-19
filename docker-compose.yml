@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  barbershop:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: barbershop-elite:latest
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - HOST=0.0.0.0
+      - DATABASE_URL=sqlite:////app/data/barbershop.db
+      - UPLOADS_DIR=/app/uploads
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-barbershop_super_secret_jwt_key_production}
+      - BARBERSHOP_NAME=${BARBERSHOP_NAME:-BarberShop Elite}
+      - CURRENCY=${CURRENCY:-ARS}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@barbershop.com}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+      - SEED_ON_START=true
+    volumes:
+      - barbershop_data:/app/data
+      - barbershop_uploads:/app/uploads
+
+volumes:
+  barbershop_data:
+  barbershop_uploads:

@@ -3,11 +3,13 @@ import {
   Settings, Save, CheckCircle2, AlertCircle, Coins, 
   CreditCard, Calendar, Store, Phone, MapPin, Hash, Sparkles,
   ExternalLink, Navigation, HelpCircle, ShieldCheck, Palette,
-  Image as ImageIcon, Check, RefreshCw, Sliders, Plus, Trash2, ArrowUp, ArrowDown, UploadCloud, Eye, Globe
+  Image as ImageIcon, Check, RefreshCw, Sliders, Plus, Trash2, ArrowUp, ArrowDown, UploadCloud, Eye, Globe,
+  Pencil, Gift
 } from 'lucide-react';
 import { api } from '../../api';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { Modal, ConfirmDialog } from '../../components/common/Modal';
 
 export const SettingsTab = () => {
   const { user, isSuperAdmin } = useAuth();
@@ -21,7 +23,8 @@ export const SettingsTab = () => {
     bannerInterval,
     updateBannerSettings,
     sectionsVisibility = {},
-    updateSectionVisibility
+    updateSectionVisibility,
+    refreshThemeSettings
   } = useTheme();
 
   const [settings, setSettings] = useState({});
@@ -46,15 +49,27 @@ export const SettingsTab = () => {
   const [editingInterval, setEditingInterval] = useState(5);
   const [uploadingSlideIdx, setUploadingSlideIdx] = useState(null);
 
+  // Rewards catalog state
+  const [rewards, setRewards] = useState([]);
+  const [isRewardModalOpen, setIsRewardModalOpen] = useState(false);
+  const [rewardForm, setRewardForm] = useState({ id: null, title: '', description: '', points_required: 50 });
+  const [rewardSubmitting, setRewardSubmitting] = useState(false);
+  const [rewardDeleteId, setRewardDeleteId] = useState(null);
+  const [rewardModalError, setRewardModalError] = useState('');
+
   const loadSettings = async () => {
     setLoading(true);
     try {
-      const data = await api.getSettings();
+      const [data, rewData] = await Promise.all([
+        api.getSettings(),
+        api.getRewards().catch(() => [])
+      ]);
       const map = {};
       data.forEach(item => {
         map[item.key] = item.value;
       });
       setSettings(map);
+      setRewards(rewData || []);
 
       setSelectedThemeId(map.active_theme || 'gold_elite');
       setBrandLogoUrl(map.barbershop_logo_url || '');
@@ -94,12 +109,81 @@ export const SettingsTab = () => {
     try {
       await api.updateSetting(key, String(val));
       setSettings(prev => ({ ...prev, [key]: String(val) }));
+      if (key === 'loyalty_program_enabled' || key.startsWith('section_') || key === 'online_booking_enabled') {
+        if (refreshThemeSettings) {
+          await refreshThemeSettings();
+        }
+      }
       setSuccessMsg('Configuración actualizada correctamente');
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err) {
       setErrorMsg(err.message || 'Error al guardar configuración');
     } finally {
       setSavingKey(null);
+    }
+  };
+
+  const handleOpenCreateReward = () => {
+    setRewardForm({ id: null, title: '', description: '', points_required: 50 });
+    setRewardModalError('');
+    setIsRewardModalOpen(true);
+  };
+
+  const handleOpenEditReward = (r) => {
+    setRewardForm({
+      id: r.id,
+      title: r.title,
+      description: r.description || '',
+      points_required: r.points_required
+    });
+    setRewardModalError('');
+    setIsRewardModalOpen(true);
+  };
+
+  const handleSaveReward = async (e) => {
+    e.preventDefault();
+    if (!rewardForm.title.trim()) return;
+    setRewardSubmitting(true);
+    setRewardModalError('');
+    try {
+      if (rewardForm.id) {
+        await api.updateReward(rewardForm.id, {
+          title: rewardForm.title.trim(),
+          description: rewardForm.description?.trim() || null,
+          points_required: parseInt(rewardForm.points_required) || 50
+        });
+      } else {
+        await api.createReward({
+          title: rewardForm.title.trim(),
+          description: rewardForm.description?.trim() || null,
+          points_required: parseInt(rewardForm.points_required) || 50,
+          reward_type: 'custom',
+          discount_value: 0
+        });
+      }
+      const updatedRewards = await api.getRewards();
+      setRewards(updatedRewards || []);
+      setIsRewardModalOpen(false);
+      setSuccessMsg(rewardForm.id ? 'Premio actualizado correctamente' : 'Premio agregado al catálogo');
+      setTimeout(() => setSuccessMsg(''), 3000);
+    } catch (err) {
+      setRewardModalError(err.message || 'Error al guardar premio');
+    } finally {
+      setRewardSubmitting(false);
+    }
+  };
+
+  const handleDeleteReward = async () => {
+    if (!rewardDeleteId) return;
+    try {
+      await api.deleteReward(rewardDeleteId);
+      setRewardDeleteId(null);
+      const updatedRewards = await api.getRewards();
+      setRewards(updatedRewards || []);
+      setSuccessMsg('Premio eliminado del catálogo');
+      setTimeout(() => setSuccessMsg(''), 3000);
+    } catch (err) {
+      alert(err.message || 'Error al eliminar premio');
     }
   };
 
@@ -308,12 +392,14 @@ export const SettingsTab = () => {
   const onlineBookingEnabled = settings.online_booking_enabled === 'true';
   const bookingDepositRequired = settings.booking_deposit_required === 'true';
 
+  const isLoyaltyEnabled = settings.loyalty_program_enabled !== 'false';
+
   const subTabs = [
     ...(isSuperAdmin ? [{ id: 'themes', label: '🎨 Estilos & Temas (SuperAdmin)', icon: Palette, highlight: true }] : []),
     { id: 'sections', label: '👁️ Secciones de la Web', icon: Eye },
     { id: 'barbershop', label: 'Barbería y Ubicación', icon: Store },
     { id: 'banner', label: '🖼️ Banner & Slider', icon: ImageIcon },
-    { id: 'loyalty', label: 'Fidelización y Puntos', icon: Sparkles },
+    ...(isSuperAdmin || isLoyaltyEnabled ? [{ id: 'loyalty', label: 'Fidelización y Puntos', icon: Sparkles }] : []),
     { id: 'payments', label: 'Cobros y Finanzas', icon: CreditCard },
     { id: 'booking', label: 'Reservas y Turnos', icon: Calendar },
   ];
@@ -837,7 +923,7 @@ export const SettingsTab = () => {
                 menuLabel: 'Contacto',
                 icon: '📍'
               }
-            ].map((section) => {
+            ].filter(section => section.id !== 'loyalty' || isLoyaltyEnabled).map((section) => {
               const isEnabled = sectionsVisibility[section.id] !== false;
               const isSaving = savingKey === `section_${section.id}`;
 
@@ -1318,21 +1404,62 @@ export const SettingsTab = () => {
       {/* TAB 2: FIDELIZACIÓN Y PUNTOS */}
       {activeSubTab === 'loyalty' && (
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-7 shadow-xl space-y-6">
-          <div className="flex items-center space-x-3 pb-4 border-b border-slate-800">
-            <div className="p-2.5 bg-amber-500/10 text-amber-400 rounded-xl border border-amber-500/20">
-              <Sparkles className="w-5 h-5" />
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+            <div className="flex items-center space-x-3">
+              <div className="p-2.5 bg-amber-500/10 text-amber-400 rounded-xl border border-amber-500/20">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white font-heading flex items-center space-x-2">
+                  <span>Programa de Fidelización y Puntos</span>
+                  {isSuperAdmin && (
+                    <span className="px-2 py-0.5 bg-red-500/15 text-red-400 border border-red-500/30 rounded text-[9px] font-bold uppercase">
+                      SuperAdmin
+                    </span>
+                  )}
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Configura cuántos puntos ganan los clientes por servicio y cuántos necesitan para un corte gratis.
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-base font-bold text-white font-heading">
-                Programa de Fidelización y Puntos
-              </h3>
-              <p className="text-xs text-slate-400">
-                Configura cuántos puntos ganan los clientes por servicio y cuántos necesitan para un corte gratis.
-              </p>
-            </div>
+
+            {/* SuperAdmin Toggle Master */}
+            {isSuperAdmin && (
+              <div className="flex items-center space-x-2 bg-slate-950 border border-slate-800 p-1.5 rounded-2xl shrink-0">
+                <span className="text-xs text-slate-400 font-semibold pl-2">Estado:</span>
+                <button
+                  type="button"
+                  onClick={() => handleUpdate('loyalty_program_enabled', isLoyaltyEnabled ? 'false' : 'true')}
+                  disabled={savingKey === 'loyalty_program_enabled'}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
+                    isLoyaltyEnabled
+                      ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                      : 'bg-rose-500 text-white shadow-md shadow-rose-500/20'
+                  }`}
+                >
+                  {savingKey === 'loyalty_program_enabled'
+                    ? 'Guardando...'
+                    : isLoyaltyEnabled
+                      ? '✓ Activo en Sistema'
+                      : '✕ Desactivado'}
+                </button>
+              </div>
+            )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {!isLoyaltyEnabled && (
+            <div className="p-4 bg-rose-500/10 border border-rose-500/30 text-rose-300 rounded-2xl text-xs space-y-1">
+              <strong className="block text-sm font-bold text-rose-400">
+                ⚠️ Programa de Fidelización y Puntos Desactivado
+              </strong>
+              <p className="opacity-90 leading-relaxed">
+                El sistema de puntos se encuentra actualmente <strong>desactivado</strong> por el SuperAdmin. Los administradores no verán esta pestaña en su panel de configuración, y en el Registro de Cortes no aparecerá ninguna opción ni suma de puntos.
+              </p>
+            </div>
+          )}
+
+          <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 transition-opacity ${!isLoyaltyEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
             <div className="bg-slate-950 border border-slate-800/80 rounded-2xl p-5 space-y-4 flex flex-col justify-between">
               <div>
                 <span className="text-xs font-bold uppercase tracking-wider text-amber-400 block mb-1">
@@ -1408,6 +1535,74 @@ export const SettingsTab = () => {
                   <span>{savingKey === 'points_for_free_cut' ? 'Guardando...' : 'Guardar'}</span>
                 </button>
               </div>
+            </div>
+          </div>
+
+          {/* SECCIÓN: Premios y Canjes Disponibles en el Salón */}
+          <div className="pt-6 border-t border-slate-800 space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <h4 className="text-base font-bold text-white flex items-center space-x-2">
+                  <Gift className="w-5 h-5 text-amber-400" />
+                  <span>Premios y Canjes Disponibles en el Salón</span>
+                </h4>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Estas son las tarjetas que se muestran a los clientes en la página web pública en la sección de Fidelización.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleOpenCreateReward}
+                className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs rounded-xl flex items-center space-x-1.5 transition-all shadow-md shadow-amber-500/20 active:scale-95 shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Agregar Premio / Canje</span>
+              </button>
+            </div>
+
+            {/* Grid of rewards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+              {rewards.length === 0 ? (
+                <div className="col-span-full py-8 text-center text-slate-500 text-xs border border-dashed border-slate-800 rounded-2xl">
+                  No hay premios registrados. Haz clic en "+ Agregar Premio / Canje" para crear el primero.
+                </div>
+              ) : (
+                rewards.map(r => (
+                  <div key={r.id} className="bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-2xl p-5 flex flex-col justify-between space-y-3 transition-colors">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="px-2.5 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full text-xs font-bold">
+                          {r.points_required} PUNTOS
+                        </span>
+                        <div className="flex items-center space-x-1">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditReward(r)}
+                            className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-slate-800 rounded-lg transition-colors"
+                            title="Editar premio"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setRewardDeleteId(r.id)}
+                            className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors"
+                            title="Eliminar premio"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                      <h5 className="font-bold text-white text-sm">{r.title}</h5>
+                      <p className="text-xs text-slate-400 leading-relaxed">{r.description || 'Sin descripción'}</p>
+                    </div>
+                    <div className="text-[11px] text-amber-400/80 pt-2 border-t border-slate-900 flex items-center space-x-1">
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Visible en la web pública</span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -1610,6 +1805,96 @@ export const SettingsTab = () => {
           </div>
         </div>
       )}
+
+      {/* Modal: Crear / Editar Premio */}
+      {isRewardModalOpen && (
+        <Modal
+          isOpen={true}
+          onClose={() => setIsRewardModalOpen(false)}
+          title={rewardForm.id ? `Editar Premio: ${rewardForm.title}` : 'Agregar Nuevo Premio / Canje'}
+          maxWidth="max-w-md"
+        >
+          <form onSubmit={handleSaveReward} className="space-y-4 text-xs">
+            {rewardModalError && (
+              <div className="p-3 bg-rose-500/10 border border-rose-500/30 text-rose-400 rounded-xl text-xs flex items-center space-x-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{rewardModalError}</span>
+              </div>
+            )}
+
+            <div>
+              <label className="block font-bold text-slate-300 mb-1">
+                Título del Premio / Beneficio *
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="Ej. $3.000 ARS de Descuento Directo"
+                value={rewardForm.title}
+                onChange={(e) => setRewardForm({ ...rewardForm, title: e.target.value })}
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-300 mb-1">
+                Puntos Requeridos para Canjear *
+              </label>
+              <input
+                type="number"
+                min="5"
+                step="5"
+                required
+                placeholder="Ej. 40"
+                value={rewardForm.points_required}
+                onChange={(e) => setRewardForm({ ...rewardForm, points_required: e.target.value })}
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-amber-400 font-bold font-mono text-sm focus:outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-300 mb-1">
+                Descripción visible para los clientes
+              </label>
+              <textarea
+                rows={3}
+                placeholder="Ej. Descuento monetario aplicable a cualquier servicio de tu elección..."
+                value={rewardForm.description}
+                onChange={(e) => setRewardForm({ ...rewardForm, description: e.target.value })}
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <div className="flex justify-end space-x-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsRewardModalOpen(false)}
+                className="px-4 py-2 bg-slate-800 text-slate-300 hover:text-white rounded-xl font-semibold"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={rewardSubmitting}
+                className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl shadow-md shadow-amber-500/20 active:scale-95"
+              >
+                {rewardSubmitting ? 'Guardando...' : rewardForm.id ? 'Guardar Cambios' : 'Crear Premio'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* Confirmación para eliminar premio */}
+      <ConfirmDialog
+        isOpen={!!rewardDeleteId}
+        onClose={() => setRewardDeleteId(null)}
+        onConfirm={handleDeleteReward}
+        title="Eliminar Premio del Catálogo"
+        message="¿Estás seguro de que deseas eliminar este premio? Ya no se mostrará en la web pública ni estará disponible para canjes en el salón."
+        isDanger={true}
+        confirmText="Sí, Eliminar"
+      />
     </div>
   );
 };

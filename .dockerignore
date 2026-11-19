@@ -1,0 +1,15 @@
+node_modules
+dist
+venv
+backend/venv
+.git
+.gitignore
+.env
+.DS_Store
+*.db
+barbershop.db
+__pycache__
+*/__pycache__
+*/*/__pycache__
+.user_uploaded
+screenshots

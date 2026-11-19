@@ -2,7 +2,12 @@ import os
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./barbershop.db")
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    if os.path.exists("/app/data"):
+        DATABASE_URL = "sqlite:////app/data/barbershop.db"
+    else:
+        DATABASE_URL = "sqlite:///./barbershop.db"
 
 connect_args = {}
 if DATABASE_URL.startswith("sqlite"):

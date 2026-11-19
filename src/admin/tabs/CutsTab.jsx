@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Scissors, Plus, Trash2, Filter, Search, CheckCircle2, 
-  AlertCircle, User, CreditCard, X, UserPlus, Calendar, Sparkles, Gift
+  AlertCircle, User, CreditCard, X, UserPlus, Calendar, Sparkles, Gift, Pencil
 } from 'lucide-react';
 import { api } from '../../api';
 import { Modal, ConfirmDialog } from '../../components/common/Modal';
@@ -59,7 +59,25 @@ export const CutsTab = ({ user }) => {
   const [deleteId, setDeleteId] = useState(null);
   const [modalError, setModalError] = useState('');
 
+  // Modal edit record
+  const [editingRecord, setEditingRecord] = useState(null);
+  const [editServiceId, setEditServiceId] = useState('');
+  const [editBarberId, setEditBarberId] = useState('');
+  const [editSelectedCustomer, setEditSelectedCustomer] = useState(null);
+  const [editCustomerSearchQuery, setEditCustomerSearchQuery] = useState('');
+  const [editCustomerResults, setEditCustomerResults] = useState([]);
+  const [editSearchingCustomer, setEditSearchingCustomer] = useState(false);
+  const [editIsNewCustomerMode, setEditIsNewCustomerMode] = useState(false);
+  const [editNewCustomerName, setEditNewCustomerName] = useState('');
+  const [editNewCustomerPhone, setEditNewCustomerPhone] = useState('');
+  const [editPaymentOption, setEditPaymentOption] = useState('shop_transfer');
+  const [editPriceOverride, setEditPriceOverride] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [editModalError, setEditModalError] = useState('');
+  const [editSubmitting, setEditSubmitting] = useState(false);
+
   const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
+  const isLoyaltyEnabled = systemSettings.loyalty_program_enabled !== 'false';
 
   const loadData = async () => {
     setLoading(true);
@@ -215,6 +233,88 @@ export const CutsTab = ({ user }) => {
       setModalError(err.message || 'Error al registrar corte');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // Customer search in edit modal
+  useEffect(() => {
+    if (!editCustomerSearchQuery || editSelectedCustomer) {
+      setEditCustomerResults([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setEditSearchingCustomer(true);
+      try {
+        const q = editCustomerSearchQuery.trim();
+        const results = await api.getCustomers(q);
+        setEditCustomerResults(results || []);
+      } catch (err) {
+        console.error('Error buscando clientes en edición:', err);
+      } finally {
+        setEditSearchingCustomer(false);
+      }
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [editCustomerSearchQuery, editSelectedCustomer]);
+
+  const handleOpenEdit = (r) => {
+    setEditingRecord(r);
+    setEditServiceId(String(r.service_id));
+    setEditBarberId(String(r.barber_id));
+    setEditSelectedCustomer(r.customer_id ? { id: r.customer_id, full_name: r.customer_name, phone: r.customer_phone } : null);
+    setEditCustomerSearchQuery('');
+    setEditCustomerResults([]);
+    setEditIsNewCustomerMode(false);
+    setEditNewCustomerName('');
+    setEditNewCustomerPhone('');
+    setEditPaymentOption(r.payment_method === 'cash' ? 'cash' : r.payment_method === 'transfer_barber' ? 'barber_transfer' : 'shop_transfer');
+    setEditPriceOverride(String(r.price));
+    setEditNotes(r.notes || '');
+    setEditModalError('');
+  };
+
+  const handleSaveEditRecord = async (e) => {
+    e.preventDefault();
+    if (!editingRecord) return;
+    setEditSubmitting(true);
+    setEditModalError('');
+
+    try {
+      let finalCollectedBy = 'admin';
+      let finalPaymentMethod = 'transfer_shop';
+
+      if (editPaymentOption === 'barber_transfer') {
+        finalCollectedBy = 'barber';
+        finalPaymentMethod = 'transfer_barber';
+      } else if (editPaymentOption === 'cash') {
+        finalCollectedBy = 'admin';
+        finalPaymentMethod = 'cash';
+      } else {
+        finalCollectedBy = 'admin';
+        finalPaymentMethod = 'transfer_shop';
+      }
+
+      const payload = {
+        service_id: parseInt(editServiceId),
+        barber_id: parseInt(editBarberId),
+        customer_id: editSelectedCustomer ? editSelectedCustomer.id : null,
+        customer_name: editIsNewCustomerMode && editNewCustomerName ? editNewCustomerName.trim() : null,
+        customer_phone: editIsNewCustomerMode && editNewCustomerPhone ? editNewCustomerPhone.trim() : null,
+        price_override: editPriceOverride !== '' ? parseFloat(editPriceOverride) : null,
+        collected_by: finalCollectedBy,
+        payment_method: finalPaymentMethod,
+        notes: editNotes || null
+      };
+
+      await api.updateServiceRecord(editingRecord.id, payload);
+      setEditingRecord(null);
+      loadData();
+    } catch (err) {
+      setEditModalError(err.message || 'Error al actualizar registro');
+    } finally {
+      setEditSubmitting(false);
     }
   };
 
@@ -380,8 +480,14 @@ export const CutsTab = ({ user }) => {
             <input
               type="date"
               value={dateFrom}
+              onClick={(e) => {
+                try { e.target.showPicker(); } catch (_) {}
+              }}
+              onFocus={(e) => {
+                try { e.target.showPicker(); } catch (_) {}
+              }}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white focus:outline-none focus:border-amber-500 font-mono"
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white focus:outline-none focus:border-amber-500 font-mono cursor-pointer [color-scheme:dark]"
             />
           </div>
 
@@ -390,8 +496,14 @@ export const CutsTab = ({ user }) => {
             <input
               type="date"
               value={dateTo}
+              onClick={(e) => {
+                try { e.target.showPicker(); } catch (_) {}
+              }}
+              onFocus={(e) => {
+                try { e.target.showPicker(); } catch (_) {}
+              }}
               onChange={(e) => setDateTo(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white focus:outline-none focus:border-amber-500 font-mono"
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white focus:outline-none focus:border-amber-500 font-mono cursor-pointer [color-scheme:dark]"
             />
           </div>
         </div>
@@ -401,13 +513,13 @@ export const CutsTab = ({ user }) => {
       <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
         {/* Table header - hidden on mobile, shown md+ */}
         <div className="hidden md:grid bg-slate-950 border-b border-slate-800 text-[11px] uppercase tracking-wider text-slate-400 font-semibold px-4 py-3"
-          style={{ gridTemplateColumns: isAdmin ? '110px 1.5fr 1fr 1fr 1fr 36px' : '110px 2fr 1fr 1fr' }}>
+          style={{ gridTemplateColumns: isAdmin ? '110px 1.5fr 1fr 1fr 1fr 70px' : '110px 2fr 1fr 1fr' }}>
           <div>Fecha</div>
           <div>Servicio / Cliente</div>
           <div>Barbero</div>
           <div>Cobro</div>
           {isAdmin && <div>Deuda / Estado</div>}
-          {isAdmin && <div></div>}
+          {isAdmin && <div className="text-right">Acciones</div>}
         </div>
 
         <div className="divide-y divide-slate-800/50">
@@ -454,7 +566,9 @@ export const CutsTab = ({ user }) => {
                           )}
                         </div>
                         <span className="text-[11px] text-slate-400">{r.customer_name || 'Sin registrar'}{r.customer_phone ? ` · ${r.customer_phone}` : ''}</span>
-                        {r.loyalty_points_awarded > 0 && <span className="text-[10px] text-amber-400 font-bold"> +{r.loyalty_points_awarded} pts</span>}
+                        {isLoyaltyEnabled && r.loyalty_points_awarded > 0 && r.customer_name && (
+                          <span className="text-[10px] text-amber-400 font-bold"> +{r.loyalty_points_awarded} pts</span>
+                        )}
                       </div>
                       <div className="text-right shrink-0">
                         <span className="text-xs font-mono text-slate-400 block">{dateStr} {timeStr}</span>
@@ -473,17 +587,32 @@ export const CutsTab = ({ user }) => {
                           }`}>{r.is_settled ? 'Liquidado' : 'Pendiente'}</span>
                         </>
                       )}
-                      {isAdmin && !r.is_settled && (
-                        <button onClick={() => setDeleteId(r.id)} className="ml-auto p-1 text-slate-500 hover:text-rose-400 rounded-lg transition-colors" title="Eliminar">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                      {isAdmin && (
+                        <div className="ml-auto flex items-center space-x-1">
+                          <button
+                            onClick={() => handleOpenEdit(r)}
+                            className="p-1 text-slate-400 hover:text-amber-400 rounded-lg transition-colors"
+                            title="Editar corte o asignar cliente"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          {!r.is_settled && (
+                            <button
+                              onClick={() => setDeleteId(r.id)}
+                              className="p-1 text-slate-500 hover:text-rose-400 rounded-lg transition-colors"
+                              title="Eliminar corte"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
 
                   {/* Desktop layout: grid columns */}
                   <div className="hidden md:grid items-center gap-3"
-                    style={{ gridTemplateColumns: isAdmin ? '110px 1.5fr 1fr 1fr 1fr 36px' : '110px 2fr 1fr 1fr' }}>
+                    style={{ gridTemplateColumns: isAdmin ? '110px 1.5fr 1fr 1fr 1fr 70px' : '110px 2fr 1fr 1fr' }}>
                     {/* Fecha */}
                     <div className="text-xs font-mono text-slate-400">
                       <span className="text-white font-semibold">{dateStr}</span>
@@ -500,7 +629,9 @@ export const CutsTab = ({ user }) => {
                       </div>
                       <span className="text-[11px] text-slate-400 block truncate">{r.customer_name || 'Sin registrar'}</span>
                       {r.customer_phone && <span className="text-[10px] text-slate-500 font-mono block">{r.customer_phone}</span>}
-                      {r.loyalty_points_awarded > 0 && <span className="text-[10px] text-amber-400 font-bold">+{r.loyalty_points_awarded} pts</span>}
+                      {isLoyaltyEnabled && r.loyalty_points_awarded > 0 && r.customer_name && (
+                        <span className="text-[10px] text-amber-400 font-bold">+{r.loyalty_points_awarded} pts</span>
+                      )}
                     </div>
 
                     {/* Barbero */}
@@ -544,16 +675,23 @@ export const CutsTab = ({ user }) => {
                       </div>
                     )}
 
-                    {/* Acción */}
+                    {/* Acciones */}
                     {isAdmin && (
-                      <div className="flex justify-end">
+                      <div className="flex items-center justify-end space-x-1">
+                        <button
+                          onClick={() => handleOpenEdit(r)}
+                          className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-slate-800 rounded-lg transition-colors"
+                          title="Editar corte o asociar cliente"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
                         {!r.is_settled && (
                           <button
                             onClick={() => setDeleteId(r.id)}
                             className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors"
                             title="Eliminar corte"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         )}
                       </div>
@@ -625,47 +763,53 @@ export const CutsTab = ({ user }) => {
             </select>
           </div>
 
-          {/* Customer Lookup & Loyalty */}
-          <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-xl space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-amber-400 uppercase tracking-wider block">
-                Fidelización de Cliente (+{pointsPerCut} pts automáticos)
-              </span>
-              {selectedCustomer ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedCustomer(null);
-                    setRedeemFreeCut(false);
-                    setCustomerName('');
-                    setCustomerPhone('');
-                    setCustomerDni('');
-                  }}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-semibold transition-colors"
-                >
-                  Cambiar
-                </button>
-              ) : !isNewCustomerMode ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsNewCustomerMode(true);
-                    if (customerSearchQuery) {
-                      const clean = customerSearchQuery.trim();
-                      if (/^[+0-9\s-]+$/.test(clean)) {
-                        setCustomerPhone(clean);
-                      } else {
-                        setCustomerName(clean);
+          {/* Customer Lookup & Loyalty (Solo si el programa de fidelización está activo) */}
+          {isLoyaltyEnabled && (
+            <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-xl space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-bold text-amber-400 uppercase tracking-wider block">
+                    Fidelización de Cliente (+{pointsPerCut} pts automáticos)
+                  </span>
+                  <span className="text-[11px] text-slate-400">
+                    Opcional. Si el cliente no desea puntos, podés dejarlo en blanco.
+                  </span>
+                </div>
+                {selectedCustomer ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCustomer(null);
+                      setRedeemFreeCut(false);
+                      setCustomerName('');
+                      setCustomerPhone('');
+                      setCustomerDni('');
+                    }}
+                    className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-semibold transition-colors"
+                  >
+                    Cambiar
+                  </button>
+                ) : !isNewCustomerMode ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsNewCustomerMode(true);
+                      if (customerSearchQuery) {
+                        const clean = customerSearchQuery.trim();
+                        if (/^[+0-9\s-]+$/.test(clean)) {
+                          setCustomerPhone(clean);
+                        } else {
+                          setCustomerName(clean);
+                        }
                       }
-                    }
-                  }}
-                  className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold rounded-lg text-xs flex items-center space-x-1.5 transition-all shadow-md shadow-amber-500/20 active:scale-95"
-                >
-                  <UserPlus className="w-4 h-4 text-slate-950" />
-                  <span>+ Nuevo Cliente</span>
-                </button>
-              ) : null}
-            </div>
+                    }}
+                    className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold rounded-lg text-xs flex items-center space-x-1.5 transition-all shadow-md shadow-amber-500/20 active:scale-95"
+                  >
+                    <UserPlus className="w-4 h-4 text-slate-950" />
+                    <span>+ Nuevo Cliente</span>
+                  </button>
+                ) : null}
+              </div>
 
             {selectedCustomer ? (
               <div className="space-y-3">
@@ -889,6 +1033,7 @@ export const CutsTab = ({ user }) => {
               </div>
             )}
           </div>
+          )}
 
           {/* Unified Payment Selector (Only if not free cut) */}
           {!redeemFreeCut ? (
@@ -1003,12 +1148,14 @@ export const CutsTab = ({ user }) => {
               <span>Quién le debe a quién:</span>
               <span>{previewDebtText}</span>
             </div>
-            <div className="text-[11px] text-slate-400 pt-1 flex items-center justify-between">
-              <span>⭐ Movimiento de Puntos de Fidelización:</span>
-              <strong className={redeemFreeCut ? 'text-rose-400 font-bold' : 'text-amber-400 font-bold'}>
-                {redeemFreeCut ? `-${pointsForFreeCut} pts (Canjeados)` : `+${pointsPerCut} pts`}
-              </strong>
-            </div>
+            {isLoyaltyEnabled && (selectedCustomer || isNewCustomerMode) && (
+              <div className="text-[11px] text-slate-400 pt-1 flex items-center justify-between">
+                <span>⭐ Movimiento de Puntos de Fidelización:</span>
+                <strong className={redeemFreeCut ? 'text-rose-400 font-bold' : 'text-amber-400 font-bold'}>
+                  {redeemFreeCut ? `-${pointsForFreeCut} pts (Canjeados)` : `+${pointsPerCut} pts`}
+                </strong>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end space-x-3 pt-3">
@@ -1030,13 +1177,265 @@ export const CutsTab = ({ user }) => {
         </form>
       </Modal>
 
+      {/* Modal: Editar Corte */}
+      {editingRecord && (
+        <Modal
+          isOpen={true}
+          onClose={() => setEditingRecord(null)}
+          title={`Editar Corte #${editingRecord.id}: ${editingRecord.service_name}`}
+          maxWidth="max-w-xl"
+        >
+          <form onSubmit={handleSaveEditRecord} className="space-y-4 text-sm">
+            {editModalError && (
+              <div className="p-3 bg-rose-500/10 border border-rose-500/30 text-rose-400 rounded-xl text-xs flex items-center space-x-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{editModalError}</span>
+              </div>
+            )}
+
+            {/* Service picker */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                Servicio o Combo *
+              </label>
+              <select
+                value={editServiceId}
+                onChange={(e) => {
+                  setEditServiceId(e.target.value);
+                  const sel = services.find(s => s.id === parseInt(e.target.value));
+                  if (sel) setEditPriceOverride(String(sel.price));
+                }}
+                required
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-amber-500"
+              >
+                {services.map(s => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} - ${s.price.toLocaleString('es-AR')} ARS
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Barber picker */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                Barbero *
+              </label>
+              <select
+                value={editBarberId}
+                onChange={(e) => setEditBarberId(e.target.value)}
+                required
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-amber-500"
+              >
+                {barbers.map(b => (
+                  <option key={b.id} value={b.id}>
+                    {b.full_name}
+                    {b.role === 'admin' || b.role === 'superadmin'
+                      ? ' (Administrador)'
+                      : b.payment_scheme === 'commission'
+                        ? ` (${b.commission_percentage}% comisión)`
+                        : ' (Alquiler Fijo)'}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Customer section (solo si fidelización está activa) */}
+            {isLoyaltyEnabled && (
+              <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-amber-400 uppercase tracking-wider block">
+                      Cliente Asociado (Fidelización)
+                    </span>
+                    <span className="text-[11px] text-slate-400">
+                      {editSelectedCustomer
+                        ? 'Cliente asignado — sumará puntos si el corte tiene valor'
+                        : 'Sin cliente asignado — no suma puntos'}
+                    </span>
+                  </div>
+                  {editSelectedCustomer && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditSelectedCustomer(null);
+                        setEditCustomerSearchQuery('');
+                      }}
+                      className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold"
+                    >
+                      Quitar cliente
+                    </button>
+                  )}
+                </div>
+
+                {editSelectedCustomer ? (
+                  <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+                    <span className="font-bold text-white text-xs block">{editSelectedCustomer.full_name}</span>
+                    <span className="text-[11px] text-slate-400">{editSelectedCustomer.phone || 'Sin teléfono'}</span>
+                  </div>
+                ) : editIsNewCustomerMode ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-slate-300 font-semibold">Registrar nuevo cliente</span>
+                      <button
+                        type="button"
+                        onClick={() => setEditIsNewCustomerMode(false)}
+                        className="text-xs text-amber-400 hover:underline"
+                      >
+                        ← Buscar existente
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        placeholder="Nombre completo"
+                        value={editNewCustomerName}
+                        onChange={(e) => setEditNewCustomerName(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500"
+                      />
+                      <input
+                        type="tel"
+                        placeholder="Teléfono"
+                        value={editNewCustomerPhone}
+                        onChange={(e) => setEditNewCustomerPhone(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                    <input
+                      type="text"
+                      placeholder="Buscar por nombre o teléfono..."
+                      value={editCustomerSearchQuery}
+                      onChange={(e) => setEditCustomerSearchQuery(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-9 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                    />
+                    {editSearchingCustomer && (
+                      <div className="absolute right-3 top-3">
+                        <div className="w-3.5 h-3.5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    )}
+                    {editCustomerResults.length > 0 && (
+                      <div className="max-h-36 overflow-y-auto bg-slate-900 border border-slate-700 rounded-xl divide-y divide-slate-800 shadow-xl mt-1">
+                        {editCustomerResults.map(c => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => {
+                              setEditSelectedCustomer(c);
+                              setEditCustomerSearchQuery('');
+                              setEditCustomerResults([]);
+                            }}
+                            className="w-full p-2.5 text-left hover:bg-slate-800/80 flex items-center justify-between text-xs"
+                          >
+                            <div>
+                              <span className="font-bold text-white block">{c.full_name}</span>
+                              <span className="text-[10px] text-slate-400">{c.phone || 'Sin teléfono'}</span>
+                            </div>
+                            <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">
+                              {c.loyalty_points || 0} pts
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setEditIsNewCustomerMode(true)}
+                      className="mt-2 text-xs text-amber-400 hover:text-amber-300 font-semibold"
+                    >
+                      + Registrar nuevo cliente
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Price override */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                Precio Cobrado (ARS)
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="100"
+                value={editPriceOverride}
+                onChange={(e) => setEditPriceOverride(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-amber-500 font-mono font-bold"
+              />
+            </div>
+
+            {/* Payment method */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                Método de Cobro
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { id: 'shop_transfer', label: '🏦 Transf. Barbería' },
+                  { id: 'cash', label: '💵 Efectivo' },
+                  { id: 'barber_transfer', label: '📱 Transf. Barbero' }
+                ].map(opt => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setEditPaymentOption(opt.id)}
+                    className={`p-2.5 rounded-xl border text-xs font-semibold text-center transition-all ${
+                      editPaymentOption === opt.id
+                        ? 'bg-amber-500/15 border-amber-500 text-white'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                Notas / Observaciones
+              </label>
+              <input
+                type="text"
+                placeholder="Observaciones adicionales..."
+                value={editNotes}
+                onChange={(e) => setEditNotes(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white text-xs focus:outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setEditingRecord(null)}
+                className="px-4 py-2 bg-slate-800 text-slate-300 hover:text-white rounded-xl text-xs font-semibold"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={editSubmitting}
+                className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-xl text-xs font-extrabold shadow-lg shadow-amber-500/20 active:scale-95"
+              >
+                {editSubmitting ? 'Guardando...' : 'Guardar Cambios'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
       {/* Delete confirmation dialog */}
       <ConfirmDialog
         isOpen={!!deleteId}
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
         title="Eliminar Registro de Corte"
-        message="¿Estás seguro de que deseas eliminar este registro de corte? Si se otorgaron puntos o se descontó stock, no se revertirá automáticamente."
+        message="¿Estás seguro de que deseas eliminar este registro de corte? Si se otorgaron puntos de fidelización al cliente, serán revertidos automáticamente."
         isDanger={true}
         confirmText="Sí, Eliminar"
       />

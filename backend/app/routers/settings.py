@@ -1,6 +1,6 @@
 import os
 from typing import List, Dict
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 from backend.app.database import get_db
@@ -35,6 +35,7 @@ def get_default_settings():
         "hero_banner_interval": ("5", "Tiempo de transición en segundos entre fotos del banner principal"),
         "barbershop_google_maps_embed_url": ("", "URL o código iframe para incrustar el mapa interactivo de Google Maps"),
         "section_services_enabled": ("true", "Mostrar u ocultar la sección de Servicios en la web"),
+        "loyalty_program_enabled": ("true", "Activar o desactivar el programa completo de fidelización y puntos en el sistema"),
         "section_loyalty_enabled": ("true", "Mostrar u ocultar la sección de Fidelización / Puntos en la web"),
         "section_about_enabled": ("true", "Mostrar u ocultar la sección de Historia / Sobre Nosotros en la web"),
         "section_gallery_enabled": ("true", "Mostrar u ocultar la sección de Galería de Fotos en la web"),
@@ -68,7 +69,10 @@ def get_public_settings(db: Session = Depends(get_db)) -> Dict[str, str]:
     if not settings:
         ensure_default_settings(db)
         settings = db.query(SystemSetting).all()
-    return {s.key: s.value for s in settings}
+    res = {s.key: s.value for s in settings}
+    loyalty_master = res.get("loyalty_program_enabled", "true")
+    res["section_loyalty_enabled"] = loyalty_master
+    return res
 
 @router.put("/{key}", response_model=SettingOut)
 def update_setting(
@@ -77,6 +81,18 @@ def update_setting(
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin)
 ):
+    # Solo el SuperAdmin puede activar/desactivar el programa de puntos del sistema
+    if key == "loyalty_program_enabled":
+        is_super = admin.role == "superadmin" or admin.email == "guillermo.diarte@gmail.com"
+        if not is_super:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Solo el SuperAdmin tiene permisos para activar o desactivar el programa de fidelización y puntos."
+            )
+        sec_loyalty = db.query(SystemSetting).filter(SystemSetting.key == "section_loyalty_enabled").first()
+        if sec_loyalty:
+            sec_loyalty.value = setting_in.value
+
     setting = db.query(SystemSetting).filter(SystemSetting.key == key).first()
     if not setting:
         setting = SystemSetting(key=key, value=setting_in.value, description=key)
