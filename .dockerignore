@@ -13,3 +13,11 @@ __pycache__
 */*/__pycache__
 .user_uploaded
 screenshots
+BarberiaApp
+BarberiaApp/
+BarberiaApp/**
+.gradle
+gradle
+build
+*.apk
+*.aab

@@ -10,14 +10,15 @@ Sistema completo de gestión de alta gama para barberías. Incluye una página w
 
 1. [Vista General de la Página Pública](#-página-pública)
 2. [Panel de Administración](#-panel-de-administración)
-3. [Configuración de Marca](#-personalización-de-marca-env)
-4. [Instalación y Puesta en Marcha](#-instalación-y-desarrollo-local)
-5. [Despliegue en Producción (VPS)](#-despliegue-en-producción-vps)
-6. [Gestión de Medios e Imágenes](#-gestión-de-medios-e-imágenes)
-7. [Seguridad y Rutas de Acceso](#-seguridad-y-rutas-de-acceso)
-8. [Credenciales de Prueba](#-credenciales-de-prueba)
-9. [Arquitectura Técnica](#-arquitectura-técnica)
-10. [API Reference](#-api-reference)
+3. [Aplicación Móvil Android (BarberiaApp)](#-aplicación-móvil-android-barberiaapp)
+4. [Configuración de Marca](#-personalización-de-marca-env)
+5. [Instalación y Puesta en Marcha](#-instalación-y-desarrollo-local)
+6. [Despliegue en Producción (VPS & Dokploy)](#-despliegue-en-producción-vps)
+7. [Gestión de Medios e Imágenes](#-gestión-de-medios-e-imágenes)
+8. [Seguridad y Rutas de Acceso](#-seguridad-y-rutas-de-acceso)
+9. [Credenciales de Prueba](#-credenciales-de-prueba)
+10. [Arquitectura Técnica](#-arquitectura-técnica)
+11. [API Reference](#-api-reference)
 
 ---
 
@@ -148,6 +149,7 @@ La configuración tiene sub-secciones:
 | **⭐ Fidelización y Puntos** | Puntos por cada $100 ARS, bonos, canjes | Admin |
 | **💳 Cobros y Finanzas** | Alias/CBU para transferencias de señas, comisiones | Admin |
 | **📅 Reservas y Turnos** | Switch ON/OFF reservas online, seña requerida | Admin |
+| **📱 App Móvil & Barberos** | Generador de código QR para auto-vinculación de la app nativa, código de salón y guía para barberos | Admin |
 
 ### Temas Visuales Disponibles
 
@@ -158,6 +160,72 @@ La configuración tiene sub-secciones:
 | 🌿 **Emerald & British Leather** | Esmeralda · Cuero · Oscuro | Estilo club inglés |
 | ⚡ **Sapphire & Cyber Steel** | Azul eléctrico · Acero | Moderno y tecnológico |
 | 🍷 **Ruby Burgundy & Rose Gold** | Borgoña · Oro rosa | Boutique y exclusivo |
+
+---
+
+## 📱 Aplicación Móvil Android (`BarberiaApp`)
+
+El ecosistema cuenta con una **aplicación móvil Android nativa** (Kotlin + Jetpack Compose) pensada para el trabajo diario de los barberos en el salón, con funcionamiento **Offline-First** y arquitectura **Multi-Barbería (Multi-Tenant)**.
+
+<div align="center">
+  <img src="screenshots/app_icon.png" width="120" alt="Icono Oficial BarberShop Elite" style="border-radius: 24px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);" />
+  <p><em>Icono Oficial de la Aplicación (Diseño exclusivo, 100% libre de derechos de autor)</em></p>
+</div>
+
+### 📸 Vistas de la Aplicación Móvil
+
+| Panel de Inicio / Turno | Registro de Cortes (Selector Compacto) | Historial CRM y Sincronización |
+|:---:|:---:|:---:|
+| <img src="screenshots/mobile_dashboard.jpg" width="260" alt="Dashboard Móvil" /> | <img src="screenshots/mobile_corte.jpg" width="260" alt="Registro de Corte Móvil" /> | <img src="screenshots/mobile_historial.jpg" width="260" alt="Historial de Cortes Móvil" /> |
+
+### 🌟 Características Principales
+
+1. **Paridad Total de Funciones con la Web**:
+   - **Registro rápido de cortes**: Selector compacto desplegable de servicios y combos (evitando listas largas en pantalla).
+   - **Búsqueda predictiva de clientes**: Consulta en tiempo real sobre la base de datos local (nombre, teléfono y puntos de fidelización acumulados).
+   - **Control de caja en vivo**: Arqueo del turno distinguiendo efectivo en cajón y transferencias digitales.
+   - **Agenda y turnos**: Consulta y gestión de reservas online asignadas.
+   - **Ventas e inventario**: Registro ágil de ventas de productos con actualización automática de stock.
+   - **Módulos restringidos**: Gastos y configuraciones protegidos automáticamente según el rol del usuario (`admin` o `superadmin`).
+
+2. **Arquitectura Multi-Barbería (Multi-Tenant Dinámico)**:
+   - **Una sola app para todos tus clientes**: No es necesario compilar ni publicar una versión nueva en Google Play cada vez que sumas un cliente o salón nuevo.
+   - **Vinculación por Código QR o Código Corto**: Desde el panel web (`/gestion-elite` → Configuración → *📱 App Móvil & Barberos*), el dueño dispone de un código QR y un código corto (ej: `elite`). El barbero simplemente escanea el QR con la cámara del celular o escribe el código al abrir la app por primera vez.
+   - **Soporte Multi-Salón (Switch Barbershop)**: Un barbero que trabaja en dos barberías distintas con el mismo email y teléfono puede tener ambas vinculadas en su app y alternar entre ellas con **un solo toque** desde el menú lateral, sin tener que volver a ingresar contraseñas.
+
+3. **Offline-First & Sincronización en Segundo Plano**:
+   - Base de datos local **SQLite (Room Database)** que almacena clientes, servicios, productos y cortes en el propio dispositivo.
+   - Si se corta Internet en el salón, los barberos pueden continuar cobrando y registrando cortes con total normalidad.
+   - Al reconectarse a Internet, **WorkManager** sincroniza automáticamente los cortes pendientes y descarga los últimos datos del servidor.
+   - Refresco inteligente automático al abrir o reanudar la app (`onResume`) y al navegar entre pestañas.
+   - Detección de suspensión de cuentas: si una cuenta es revocada o desactivada por un administrador, la app purga los registros locales no sincronizados y finaliza la sesión de forma segura.
+
+4. **Estándar de Moneda Regional (ARS)**:
+   - Formato monetario regionalizado (`CurrencyFormatter.kt`): miles separados por punto (`$11.000`, `$8.000`) y centavos separados por coma, con prevención de saltos de línea antiestéticos.
+
+5. **Iconografía Original y Cumplimiento de Google Play**:
+   - Icono adaptive (`ic_launcher.xml` / `ic_launcher_round.xml`) para Android 8.0 a 14.
+   - Recursos completos para todas las densidades de pantalla: `mdpi`, `hdpi`, `xhdpi`, `xxhdpi`, `xxxhdpi`.
+   - Master icon de 512×512 px listo para la ficha oficial de Google Play Store (`BarberiaApp/ic_launcher-playstore.png`).
+
+---
+
+### 🛡️ Despliegue en Producción & Aislamiento Docker
+
+Al desplegar en tu servidor (Dokploy, Docker o VPS), **los archivos de la aplicación móvil (`BarberiaApp/`) NO se copian en el contenedor ni consumen memoria ni disco del servidor**. Están explícitamente excluidos en `.dockerignore`:
+
+```dockerignore
+BarberiaApp
+BarberiaApp/
+BarberiaApp/**
+.gradle
+gradle
+build
+*.apk
+*.aab
+```
+
+Esto asegura que la imagen Docker de producción se mantenga ultraligera, rápida de compilar y enfocada exclusivamente en el servidor web (FastAPI + React).
 
 ---
 
@@ -279,7 +347,49 @@ npm run dev
 
 ---
 
-## 🌍 Despliegue en Producción (VPS)
+## 🌍 Despliegue en Producción (VPS & Dokploy)
+
+El sistema está empaquetado para producción tanto mediante **Docker / Dokploy** (recomendado para multi-instancia) como mediante ejecución tradicional en VPS (Python + Vite).
+
+---
+
+### 🐳 Opción 1: Despliegue con Docker & Dokploy (Recomendado)
+
+Cada cliente o barbería puede tener su propia aplicación aislada en Dokploy utilizando el archivo `Dockerfile` y `docker-compose.yml` provistos.
+
+#### 1. Persistencia de Datos y Volúmenes
+Es indispensable montar dos volúmenes persistentes en Dokploy para que no se pierdan los cortes, clientes ni imágenes subidas en futuros redeploys:
+
+| Volumen del Contenedor | Tipo | Propósito |
+|------------------------|------|-----------|
+| `/app/data` | Named Volume (`barbershop_data`) | Base de datos SQLite (`barbershop.db`) |
+| `/app/uploads` | Named Volume (`barbershop_uploads`) | Fotos de perfil, banners y comprobantes |
+
+#### 2. Variables de Entorno en Dokploy
+
+Configura las siguientes variables en la pestaña de variables de tu aplicación en Dokploy:
+
+```env
+PORT=8000
+HOST=0.0.0.0
+DATABASE_URL=sqlite:////app/data/barbershop.db
+UPLOADS_DIR=/app/uploads
+JWT_SECRET_KEY=clave_super_secreta_y_aleatoria_para_esta_barberia
+BARBERSHOP_NAME="BarberShop Elite"
+CURRENCY=ARS
+ADMIN_EMAIL=admin@tudominio.com
+ADMIN_PASSWORD=contraseña_segura
+SEED_ON_START=true
+```
+
+> 💡 **Nota sobre `SEED_ON_START=true`**: Al arrancar por primera vez, el contenedor crea automáticamente las tablas y el usuario administrador inicial si no existen. En los arranques posteriores, si la base ya existe en `/app/data`, no sobreescribe nada.
+
+#### 3. Aislamiento de la App Móvil (`.dockerignore`)
+El archivo `.dockerignore` del repositorio excluye automáticamente la carpeta `BarberiaApp/`, archivos `.apk`, `.aab` y cachés de Gradle. Al volver a desplegar en Dokploy, **no se copia ningún archivo de la app móvil al contenedor**, manteniendo la imagen ultra liviana y rápida de compilar.
+
+---
+
+### 🖥️ Opción 2: Despliegue Manual en VPS (Python + PM2)
 
 El backend FastAPI está configurado para servir directamente los archivos compilados de React (`dist/`). En producción **solo corrés un proceso en un solo puerto**.
 
