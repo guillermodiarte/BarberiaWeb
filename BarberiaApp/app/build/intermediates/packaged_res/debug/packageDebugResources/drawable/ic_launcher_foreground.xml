@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Gold Accent Ring -->
+    <path
+        android:strokeColor="#F59E0B"
+        android:strokeWidth="1.5"
+        android:pathData="M54,54m-38,0a38,38 0 1,0 76,0a38,38 0 1,0 -76,0" />
+
+    <!-- Thin Inner Ring -->
+    <path
+        android:strokeColor="#D97706"
+        android:strokeWidth="0.8"
+        android:pathData="M54,54m-35,0a35,35 0 1,0 70,0a35,35 0 1,0 -70,0" />
+
+    <!-- Diamond Accents -->
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M54,14 L56,16 L54,18 L52,16 Z" />
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M54,90 L56,92 L54,94 L52,92 Z" />
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M16,54 L18,52 L20,54 L18,56 Z" />
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M90,54 L92,52 L94,54 L92,56 Z" />
+
+    <!-- Scissors Blade 1 (Left to Center) -->
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M54,56 L50,48 L34,30 L35,33 L52,53 Z" />
+    <!-- Scissors Blade 2 (Right to Center) -->
+    <path
+        android:fillColor="#F59E0B"
+        android:pathData="M54,56 L58,48 L74,30 L73,33 L56,53 Z" />
+
+    <!-- Left Scissor Handle & Ring -->
+    <path
+        android:strokeColor="#D97706"
+        android:strokeWidth="2.5"
+        android:pathData="M52,56 L42,70" />
+    <path
+        android:strokeColor="#F59E0B"
+        android:strokeWidth="2.5"
+        android:pathData="M40,73m-6,0a6,6 0 1,0 12,0a6,6 0 1,0 -12,0" />
+
+    <!-- Right Scissor Handle & Ring -->
+    <path
+        android:strokeColor="#F59E0B"
+        android:strokeWidth="2.5"
+        android:pathData="M56,56 L66,70" />
+    <path
+        android:strokeColor="#FBBF24"
+        android:strokeWidth="2.5"
+        android:pathData="M68,73m-6,0a6,6 0 1,0 12,0a6,6 0 1,0 -12,0" />
+
+    <!-- Center Pivot Screw -->
+    <path
+        android:fillColor="#D97706"
+        android:strokeColor="#FEF08A"
+        android:strokeWidth="0.8"
+        android:pathData="M54,55m-3.5,0a3.5,3.5 0 1,0 7,0a3.5,3.5 0 1,0 -7,0" />
+    <path
+        android:fillColor="#020617"
+        android:pathData="M54,55m-1.5,0a1.5,1.5 0 1,0 3,0a1.5,1.5 0 1,0 -3,0" />
+
+    <!-- Top Luxury Barber Stars -->
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M54,23 L55,25.5 L57.5,25.5 L55.5,27 L56.2,29.5 L54,28 L51.8,29.5 L52.5,27 L50.5,25.5 L53,25.5 Z" />
+    <path
+        android:fillColor="#F59E0B"
+        android:pathData="M48,25 L48.8,26.8 L50.8,26.8 L49.2,28 L49.8,29.8 L48,28.8 L46.2,29.8 L46.8,28 L45.2,26.8 L47.2,26.8 Z" />
+    <path
+        android:fillColor="#F59E0B"
+        android:pathData="M60,25 L60.8,26.8 L62.8,26.8 L61.2,28 L61.8,29.8 L60,28.8 L58.2,29.8 L58.8,28 L57.2,26.8 L59.2,26.8 Z" />
+</vector>

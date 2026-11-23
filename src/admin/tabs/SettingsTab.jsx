@@ -4,7 +4,7 @@ import {
   CreditCard, Calendar, Store, Phone, MapPin, Hash, Sparkles,
   ExternalLink, Navigation, HelpCircle, ShieldCheck, Palette,
   Image as ImageIcon, Check, RefreshCw, Sliders, Plus, Trash2, ArrowUp, ArrowDown, UploadCloud, Eye, Globe,
-  Pencil, Gift
+  Pencil, Gift, Smartphone, QrCode, Copy
 } from 'lucide-react';
 import { api } from '../../api';
 import { useAuth } from '../../context/AuthContext';
@@ -402,6 +402,7 @@ export const SettingsTab = () => {
     ...(isSuperAdmin || isLoyaltyEnabled ? [{ id: 'loyalty', label: 'Fidelización y Puntos', icon: Sparkles }] : []),
     { id: 'payments', label: 'Cobros y Finanzas', icon: CreditCard },
     { id: 'booking', label: 'Reservas y Turnos', icon: Calendar },
+    { id: 'mobile_app', label: '📱 App Móvil & Barberos', icon: Smartphone },
   ];
 
   return (
@@ -841,6 +842,137 @@ export const SettingsTab = () => {
                 <Save className="w-4 h-4" />
                 <span>{savingKey === 'branding_superadmin' ? 'Guardando...' : 'Guardar Pestaña & Favicon'}</span>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+
+      {/* TAB APP MÓVIL Y VINCULACIÓN DE BARBEROS */}
+      {activeSubTab === 'mobile_app' && (
+        <div className="space-y-6">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-6 border-b border-slate-800">
+              <div>
+                <span className="px-3 py-1 rounded-full text-[10px] font-extrabold tracking-wider uppercase bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                  VINCULACIÓN RÁPIDA MULTICLIENTE
+                </span>
+                <h3 className="text-xl font-bold text-white font-heading mt-2">
+                  Código QR y Conexión para Barberos
+                </h3>
+                <p className="text-xs text-slate-400 mt-1 max-w-xl">
+                  Comparte este código con tus barberos para que vinculen la App Móvil oficial directamente a este salón sin tener que escribir URLs técnicas.
+                </p>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center space-x-2 border border-slate-700"
+                >
+                  <QrCode className="w-4 h-4 text-amber-400" />
+                  <span>Imprimir QR del Salón</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-6 items-center">
+              {/* QR Code Container */}
+              <div className="lg:col-span-5 flex flex-col items-center justify-center p-6 bg-slate-950 border border-slate-800 rounded-2xl text-center">
+                <div className="p-4 bg-white rounded-2xl shadow-2xl inline-block">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
+                      JSON.stringify({
+                        app: 'BarberShopElite',
+                        name: settings.barbershop_name || 'BarberShop Elite',
+                        url: window.location.origin,
+                        code: 'elite'
+                      })
+                    )}`}
+                    alt="QR Conexión App Móvil"
+                    className="w-48 h-48 object-contain"
+                  />
+                </div>
+                <div className="mt-4">
+                  <span className="text-xs text-slate-400 font-medium block">Apunta con la cámara de la App</span>
+                  <span className="text-sm font-bold text-amber-400 font-mono tracking-widest mt-0.5 block">
+                    {window.location.hostname}
+                  </span>
+                </div>
+              </div>
+
+              {/* Data & Instructions */}
+              <div className="lg:col-span-7 space-y-5">
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
+                    Código corto asignado
+                  </label>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value="elite"
+                      className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-amber-400 font-mono font-bold text-base w-48 text-center"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText('elite');
+                        setSuccessMsg('¡Código "elite" copiado al portapapeles!');
+                        setTimeout(() => setSuccessMsg(''), 3000);
+                      }}
+                      className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all"
+                      title="Copiar código"
+                    >
+                      <Copy className="w-4 h-4 text-amber-400" />
+                    </button>
+                  </div>
+                  <span className="text-[11px] text-slate-500 mt-1 block">
+                    Tus barberos pueden simplemente escribir este código en la app si prefieren no escanear el QR.
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
+                    URL del servidor web
+                  </label>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={window.location.origin}
+                      className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-slate-300 font-mono text-xs w-full"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(window.location.origin);
+                        setSuccessMsg('¡URL del salón copiada al portapapeles!');
+                        setTimeout(() => setSuccessMsg(''), 3000);
+                      }}
+                      className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all"
+                      title="Copiar URL"
+                    >
+                      <Copy className="w-4 h-4 text-amber-400" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Paso a paso para los barberos */}
+                <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-4 text-xs space-y-2">
+                  <h4 className="font-bold text-amber-400 flex items-center space-x-1.5">
+                    <Smartphone className="w-4 h-4" />
+                    <span>Instrucciones para tus barberos:</span>
+                  </h4>
+                  <ol className="list-decimal list-inside space-y-1.5 text-slate-300">
+                    <li>Descargar la App oficial desde Google Play Store.</li>
+                    <li>Al abrir la app, presionar <strong className="text-white">"Escanear Código QR"</strong> y apuntar a esta pantalla (o escribir el código).</li>
+                    <li>Ingresar su usuario y contraseña asignados en la pestaña Barberos.</li>
+                    <li>Si el barbero trabaja en otra sucursal, puede tocar <strong className="text-white">"+ Vincular otra Barbería"</strong> y alternar entre salones con 1 toque.</li>
+                  </ol>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1401,6 +1533,137 @@ export const SettingsTab = () => {
         </div>
       )}
 
+
+      {/* TAB APP MÓVIL Y VINCULACIÓN DE BARBEROS */}
+      {activeSubTab === 'mobile_app' && (
+        <div className="space-y-6">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-6 border-b border-slate-800">
+              <div>
+                <span className="px-3 py-1 rounded-full text-[10px] font-extrabold tracking-wider uppercase bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                  VINCULACIÓN RÁPIDA MULTICLIENTE
+                </span>
+                <h3 className="text-xl font-bold text-white font-heading mt-2">
+                  Código QR y Conexión para Barberos
+                </h3>
+                <p className="text-xs text-slate-400 mt-1 max-w-xl">
+                  Comparte este código con tus barberos para que vinculen la App Móvil oficial directamente a este salón sin tener que escribir URLs técnicas.
+                </p>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center space-x-2 border border-slate-700"
+                >
+                  <QrCode className="w-4 h-4 text-amber-400" />
+                  <span>Imprimir QR del Salón</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-6 items-center">
+              {/* QR Code Container */}
+              <div className="lg:col-span-5 flex flex-col items-center justify-center p-6 bg-slate-950 border border-slate-800 rounded-2xl text-center">
+                <div className="p-4 bg-white rounded-2xl shadow-2xl inline-block">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
+                      JSON.stringify({
+                        app: 'BarberShopElite',
+                        name: settings.barbershop_name || 'BarberShop Elite',
+                        url: window.location.origin,
+                        code: 'elite'
+                      })
+                    )}`}
+                    alt="QR Conexión App Móvil"
+                    className="w-48 h-48 object-contain"
+                  />
+                </div>
+                <div className="mt-4">
+                  <span className="text-xs text-slate-400 font-medium block">Apunta con la cámara de la App</span>
+                  <span className="text-sm font-bold text-amber-400 font-mono tracking-widest mt-0.5 block">
+                    {window.location.hostname}
+                  </span>
+                </div>
+              </div>
+
+              {/* Data & Instructions */}
+              <div className="lg:col-span-7 space-y-5">
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
+                    Código corto asignado
+                  </label>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value="elite"
+                      className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-amber-400 font-mono font-bold text-base w-48 text-center"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText('elite');
+                        setSuccessMsg('¡Código "elite" copiado al portapapeles!');
+                        setTimeout(() => setSuccessMsg(''), 3000);
+                      }}
+                      className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all"
+                      title="Copiar código"
+                    >
+                      <Copy className="w-4 h-4 text-amber-400" />
+                    </button>
+                  </div>
+                  <span className="text-[11px] text-slate-500 mt-1 block">
+                    Tus barberos pueden simplemente escribir este código en la app si prefieren no escanear el QR.
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
+                    URL del servidor web
+                  </label>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={window.location.origin}
+                      className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-slate-300 font-mono text-xs w-full"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(window.location.origin);
+                        setSuccessMsg('¡URL del salón copiada al portapapeles!');
+                        setTimeout(() => setSuccessMsg(''), 3000);
+                      }}
+                      className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all"
+                      title="Copiar URL"
+                    >
+                      <Copy className="w-4 h-4 text-amber-400" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Paso a paso para los barberos */}
+                <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-4 text-xs space-y-2">
+                  <h4 className="font-bold text-amber-400 flex items-center space-x-1.5">
+                    <Smartphone className="w-4 h-4" />
+                    <span>Instrucciones para tus barberos:</span>
+                  </h4>
+                  <ol className="list-decimal list-inside space-y-1.5 text-slate-300">
+                    <li>Descargar la App oficial desde Google Play Store.</li>
+                    <li>Al abrir la app, presionar <strong className="text-white">"Escanear Código QR"</strong> y apuntar a esta pantalla (o escribir el código).</li>
+                    <li>Ingresar su usuario y contraseña asignados en la pestaña Barberos.</li>
+                    <li>Si el barbero trabaja en otra sucursal, puede tocar <strong className="text-white">"+ Vincular otra Barbería"</strong> y alternar entre salones con 1 toque.</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* TAB 2: FIDELIZACIÓN Y PUNTOS */}
       {activeSubTab === 'loyalty' && (
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-7 shadow-xl space-y-6">
@@ -1608,6 +1871,137 @@ export const SettingsTab = () => {
         </div>
       )}
 
+
+      {/* TAB APP MÓVIL Y VINCULACIÓN DE BARBEROS */}
+      {activeSubTab === 'mobile_app' && (
+        <div className="space-y-6">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-6 border-b border-slate-800">
+              <div>
+                <span className="px-3 py-1 rounded-full text-[10px] font-extrabold tracking-wider uppercase bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                  VINCULACIÓN RÁPIDA MULTICLIENTE
+                </span>
+                <h3 className="text-xl font-bold text-white font-heading mt-2">
+                  Código QR y Conexión para Barberos
+                </h3>
+                <p className="text-xs text-slate-400 mt-1 max-w-xl">
+                  Comparte este código con tus barberos para que vinculen la App Móvil oficial directamente a este salón sin tener que escribir URLs técnicas.
+                </p>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center space-x-2 border border-slate-700"
+                >
+                  <QrCode className="w-4 h-4 text-amber-400" />
+                  <span>Imprimir QR del Salón</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-6 items-center">
+              {/* QR Code Container */}
+              <div className="lg:col-span-5 flex flex-col items-center justify-center p-6 bg-slate-950 border border-slate-800 rounded-2xl text-center">
+                <div className="p-4 bg-white rounded-2xl shadow-2xl inline-block">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
+                      JSON.stringify({
+                        app: 'BarberShopElite',
+                        name: settings.barbershop_name || 'BarberShop Elite',
+                        url: window.location.origin,
+                        code: 'elite'
+                      })
+                    )}`}
+                    alt="QR Conexión App Móvil"
+                    className="w-48 h-48 object-contain"
+                  />
+                </div>
+                <div className="mt-4">
+                  <span className="text-xs text-slate-400 font-medium block">Apunta con la cámara de la App</span>
+                  <span className="text-sm font-bold text-amber-400 font-mono tracking-widest mt-0.5 block">
+                    {window.location.hostname}
+                  </span>
+                </div>
+              </div>
+
+              {/* Data & Instructions */}
+              <div className="lg:col-span-7 space-y-5">
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
+                    Código corto asignado
+                  </label>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value="elite"
+                      className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-amber-400 font-mono font-bold text-base w-48 text-center"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText('elite');
+                        setSuccessMsg('¡Código "elite" copiado al portapapeles!');
+                        setTimeout(() => setSuccessMsg(''), 3000);
+                      }}
+                      className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all"
+                      title="Copiar código"
+                    >
+                      <Copy className="w-4 h-4 text-amber-400" />
+                    </button>
+                  </div>
+                  <span className="text-[11px] text-slate-500 mt-1 block">
+                    Tus barberos pueden simplemente escribir este código en la app si prefieren no escanear el QR.
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
+                    URL del servidor web
+                  </label>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={window.location.origin}
+                      className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-slate-300 font-mono text-xs w-full"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(window.location.origin);
+                        setSuccessMsg('¡URL del salón copiada al portapapeles!');
+                        setTimeout(() => setSuccessMsg(''), 3000);
+                      }}
+                      className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all"
+                      title="Copiar URL"
+                    >
+                      <Copy className="w-4 h-4 text-amber-400" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Paso a paso para los barberos */}
+                <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-4 text-xs space-y-2">
+                  <h4 className="font-bold text-amber-400 flex items-center space-x-1.5">
+                    <Smartphone className="w-4 h-4" />
+                    <span>Instrucciones para tus barberos:</span>
+                  </h4>
+                  <ol className="list-decimal list-inside space-y-1.5 text-slate-300">
+                    <li>Descargar la App oficial desde Google Play Store.</li>
+                    <li>Al abrir la app, presionar <strong className="text-white">"Escanear Código QR"</strong> y apuntar a esta pantalla (o escribir el código).</li>
+                    <li>Ingresar su usuario y contraseña asignados en la pestaña Barberos.</li>
+                    <li>Si el barbero trabaja en otra sucursal, puede tocar <strong className="text-white">"+ Vincular otra Barbería"</strong> y alternar entre salones con 1 toque.</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* TAB 3: COBROS Y POLÍTICAS FINANCIERAS */}
       {activeSubTab === 'payments' && (
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-7 shadow-xl space-y-6">
@@ -1695,6 +2089,137 @@ export const SettingsTab = () => {
                 <span className="text-[11px] text-slate-500">
                   Totalmente automatizado con esquema por comisión y alquiler fijo.
                 </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+
+      {/* TAB APP MÓVIL Y VINCULACIÓN DE BARBEROS */}
+      {activeSubTab === 'mobile_app' && (
+        <div className="space-y-6">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-6 border-b border-slate-800">
+              <div>
+                <span className="px-3 py-1 rounded-full text-[10px] font-extrabold tracking-wider uppercase bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                  VINCULACIÓN RÁPIDA MULTICLIENTE
+                </span>
+                <h3 className="text-xl font-bold text-white font-heading mt-2">
+                  Código QR y Conexión para Barberos
+                </h3>
+                <p className="text-xs text-slate-400 mt-1 max-w-xl">
+                  Comparte este código con tus barberos para que vinculen la App Móvil oficial directamente a este salón sin tener que escribir URLs técnicas.
+                </p>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center space-x-2 border border-slate-700"
+                >
+                  <QrCode className="w-4 h-4 text-amber-400" />
+                  <span>Imprimir QR del Salón</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-6 items-center">
+              {/* QR Code Container */}
+              <div className="lg:col-span-5 flex flex-col items-center justify-center p-6 bg-slate-950 border border-slate-800 rounded-2xl text-center">
+                <div className="p-4 bg-white rounded-2xl shadow-2xl inline-block">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
+                      JSON.stringify({
+                        app: 'BarberShopElite',
+                        name: settings.barbershop_name || 'BarberShop Elite',
+                        url: window.location.origin,
+                        code: 'elite'
+                      })
+                    )}`}
+                    alt="QR Conexión App Móvil"
+                    className="w-48 h-48 object-contain"
+                  />
+                </div>
+                <div className="mt-4">
+                  <span className="text-xs text-slate-400 font-medium block">Apunta con la cámara de la App</span>
+                  <span className="text-sm font-bold text-amber-400 font-mono tracking-widest mt-0.5 block">
+                    {window.location.hostname}
+                  </span>
+                </div>
+              </div>
+
+              {/* Data & Instructions */}
+              <div className="lg:col-span-7 space-y-5">
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
+                    Código corto asignado
+                  </label>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value="elite"
+                      className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-amber-400 font-mono font-bold text-base w-48 text-center"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText('elite');
+                        setSuccessMsg('¡Código "elite" copiado al portapapeles!');
+                        setTimeout(() => setSuccessMsg(''), 3000);
+                      }}
+                      className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all"
+                      title="Copiar código"
+                    >
+                      <Copy className="w-4 h-4 text-amber-400" />
+                    </button>
+                  </div>
+                  <span className="text-[11px] text-slate-500 mt-1 block">
+                    Tus barberos pueden simplemente escribir este código en la app si prefieren no escanear el QR.
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
+                    URL del servidor web
+                  </label>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={window.location.origin}
+                      className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-slate-300 font-mono text-xs w-full"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(window.location.origin);
+                        setSuccessMsg('¡URL del salón copiada al portapapeles!');
+                        setTimeout(() => setSuccessMsg(''), 3000);
+                      }}
+                      className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all"
+                      title="Copiar URL"
+                    >
+                      <Copy className="w-4 h-4 text-amber-400" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Paso a paso para los barberos */}
+                <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-4 text-xs space-y-2">
+                  <h4 className="font-bold text-amber-400 flex items-center space-x-1.5">
+                    <Smartphone className="w-4 h-4" />
+                    <span>Instrucciones para tus barberos:</span>
+                  </h4>
+                  <ol className="list-decimal list-inside space-y-1.5 text-slate-300">
+                    <li>Descargar la App oficial desde Google Play Store.</li>
+                    <li>Al abrir la app, presionar <strong className="text-white">"Escanear Código QR"</strong> y apuntar a esta pantalla (o escribir el código).</li>
+                    <li>Ingresar su usuario y contraseña asignados en la pestaña Barberos.</li>
+                    <li>Si el barbero trabaja en otra sucursal, puede tocar <strong className="text-white">"+ Vincular otra Barbería"</strong> y alternar entre salones con 1 toque.</li>
+                  </ol>
+                </div>
               </div>
             </div>
           </div>
@@ -1800,6 +2325,136 @@ export const SettingsTab = () => {
                   <Save className="w-3.5 h-3.5" />
                   <span>Guardar</span>
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB APP MÓVIL Y VINCULACIÓN DE BARBEROS */}
+      {activeSubTab === 'mobile_app' && (
+        <div className="space-y-6">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-6 border-b border-slate-800">
+              <div>
+                <span className="px-3 py-1 rounded-full text-[10px] font-extrabold tracking-wider uppercase bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                  VINCULACIÓN RÁPIDA MULTICLIENTE
+                </span>
+                <h3 className="text-xl font-bold text-white font-heading mt-2">
+                  Código QR y Conexión para Barberos
+                </h3>
+                <p className="text-xs text-slate-400 mt-1 max-w-xl">
+                  Comparte este código con tus barberos para que vinculen la App Móvil oficial directamente a este salón sin tener que escribir URLs técnicas.
+                </p>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center space-x-2 border border-slate-700"
+                >
+                  <QrCode className="w-4 h-4 text-amber-400" />
+                  <span>Imprimir QR del Salón</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-6 items-center">
+              {/* QR Code Container */}
+              <div className="lg:col-span-5 flex flex-col items-center justify-center p-6 bg-slate-950 border border-slate-800 rounded-2xl text-center">
+                <div className="p-4 bg-white rounded-2xl shadow-2xl inline-block">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
+                      JSON.stringify({
+                        app: 'BarberShopElite',
+                        name: settings.barbershop_name || 'BarberShop Elite',
+                        url: window.location.origin,
+                        code: 'elite'
+                      })
+                    )}`}
+                    alt="QR Conexión App Móvil"
+                    className="w-48 h-48 object-contain"
+                  />
+                </div>
+                <div className="mt-4">
+                  <span className="text-xs text-slate-400 font-medium block">Apunta con la cámara de la App</span>
+                  <span className="text-sm font-bold text-amber-400 font-mono tracking-widest mt-0.5 block">
+                    {window.location.hostname}
+                  </span>
+                </div>
+              </div>
+
+              {/* Data & Instructions */}
+              <div className="lg:col-span-7 space-y-5">
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
+                    Código corto asignado
+                  </label>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value="elite"
+                      className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-amber-400 font-mono font-bold text-base w-48 text-center"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText('elite');
+                        setSuccessMsg('¡Código "elite" copiado al portapapeles!');
+                        setTimeout(() => setSuccessMsg(''), 3000);
+                      }}
+                      className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all"
+                      title="Copiar código"
+                    >
+                      <Copy className="w-4 h-4 text-amber-400" />
+                    </button>
+                  </div>
+                  <span className="text-[11px] text-slate-500 mt-1 block">
+                    Tus barberos pueden simplemente escribir este código en la app si prefieren no escanear el QR.
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
+                    URL del servidor web
+                  </label>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={window.location.origin}
+                      className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-slate-300 font-mono text-xs w-full"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(window.location.origin);
+                        setSuccessMsg('¡URL del salón copiada al portapapeles!');
+                        setTimeout(() => setSuccessMsg(''), 3000);
+                      }}
+                      className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all"
+                      title="Copiar URL"
+                    >
+                      <Copy className="w-4 h-4 text-amber-400" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Paso a paso para los barberos */}
+                <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-4 text-xs space-y-2">
+                  <h4 className="font-bold text-amber-400 flex items-center space-x-1.5">
+                    <Smartphone className="w-4 h-4" />
+                    <span>Instrucciones para tus barberos:</span>
+                  </h4>
+                  <ol className="list-decimal list-inside space-y-1.5 text-slate-300">
+                    <li>Descargar la App oficial desde Google Play Store.</li>
+                    <li>Al abrir la app, presionar <strong className="text-white">"Escanear Código QR"</strong> y apuntar a esta pantalla (o escribir el código).</li>
+                    <li>Ingresar su usuario y contraseña asignados en la pestaña Barberos.</li>
+                    <li>Si el barbero trabaja en otra sucursal, puede tocar <strong className="text-white">"+ Vincular otra Barbería"</strong> y alternar entre salones con 1 toque.</li>
+                  </ol>
+                </div>
               </div>
             </div>
           </div>

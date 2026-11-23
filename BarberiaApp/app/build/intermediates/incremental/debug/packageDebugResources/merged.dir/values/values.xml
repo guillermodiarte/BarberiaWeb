@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg_slate_900">#FF0F172A</color>
+    <color name="bg_slate_950">#FF020617</color>
+    <color name="black">#FF000000</color>
+    <color name="primary_amber">#FFF59E0B</color>
+    <color name="white">#FFFFFFFF</color>
+    <string name="app_name">BarberShop CRM</string>
+    <style name="Theme.BarberiaApp" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">#020617</item>
+        <item name="android:navigationBarColor">#020617</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

@@ -1,0 +1,10 @@
+R_DEF: Internal format may change without notice
+local
+color bg_slate_900
+color bg_slate_950
+color black
+color primary_amber
+color white
+string app_name
+style Theme.BarberiaApp
+xml network_security_config
