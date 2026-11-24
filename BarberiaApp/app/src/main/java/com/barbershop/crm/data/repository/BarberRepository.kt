@@ -412,7 +412,7 @@ class BarberRepository(private val context: Context) {
 
     suspend fun deleteOwnAccount(): Result<String> {
         return try {
-            val response = apiService.deleteOwnAccount()
+            val response = networkClient.getApiService().deleteOwnAccount()
             if (response.isSuccessful) {
                 sessionManager.clearSession()
                 Result.success(response.body()?.message ?: "Cuenta eliminada exitosamente")
@@ -426,7 +426,7 @@ class BarberRepository(private val context: Context) {
 
     suspend fun requestAccountDeletion(email: String, password: String? = null, reason: String? = null): Result<String> {
         return try {
-            val response = apiService.requestAccountDeletion(AccountDeletionRequestDto(email, password, reason))
+            val response = networkClient.getApiService().requestAccountDeletion(AccountDeletionRequestDto(email, password, reason))
             if (response.isSuccessful) {
                 sessionManager.clearSession()
                 Result.success(response.body()?.message ?: "Solicitud de eliminación procesada")

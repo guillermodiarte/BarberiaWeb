@@ -31,3 +31,16 @@ backend/venv/
 /uploads/**/*
 !/uploads/**/
 !/uploads/**/.gitkeep
+
+# Android (BarberiaApp)
+BarberiaApp/.gradle/
+BarberiaApp/.idea/
+BarberiaApp/build/
+BarberiaApp/*/build/
+BarberiaApp/local.properties
+BarberiaApp/*.iml
+BarberiaApp/*/*.iml
+*.apk
+*.aab
+.gradle/
+build/
