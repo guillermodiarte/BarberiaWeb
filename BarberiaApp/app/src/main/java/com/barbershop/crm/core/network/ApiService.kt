@@ -13,6 +13,12 @@ interface ApiService {
     @GET("api/auth/me")
     suspend fun getMe(): Response<UserDto>
 
+    @DELETE("api/auth/me")
+    suspend fun deleteOwnAccount(): Response<GenericMessageResponse>
+
+    @POST("api/auth/request-deletion")
+    suspend fun requestAccountDeletion(@Body request: AccountDeletionRequestDto): Response<GenericMessageResponse>
+
     // Servicios & Combos
     @GET("api/services")
     suspend fun getServices(@Query("include_inactive") includeInactive: Boolean = false): Response<List<ServiceDto>>

@@ -207,6 +207,12 @@ El ecosistema cuenta con una **aplicación móvil Android nativa** (Kotlin + Jet
    - Icono adaptive (`ic_launcher.xml` / `ic_launcher_round.xml`) para Android 8.0 a 14.
    - Recursos completos para todas las densidades de pantalla: `mdpi`, `hdpi`, `xhdpi`, `xxhdpi`, `xxxhdpi`.
    - Master icon de 512×512 px listo para la ficha oficial de Google Play Store (`BarberiaApp/ic_launcher-playstore.png`).
+   - Gráfico de funciones promocional de 1024×500 px (`BarberiaApp/playstore_feature_graphic_1024x500.png`).
+
+6. **Cumplimiento de Políticas de Google Play & Privacidad**:
+   - **Política de Privacidad Oficial**: Archivo `privacy-policy.html` listo para ser publicado en GitHub Pages o cualquier hosting estático gratuito con HTTPS.
+   - **Eliminación de Cuenta (Account Deletion Policy)**: Los usuarios pueden solicitar el borrado definitivo de su cuenta y purga de datos personales tanto desde el menú lateral dentro de la app como desde la pantalla de login (en caso de cuentas bloqueadas o inactivas).
+   - **Reglas R8 / ProGuard**: Archivo `BarberiaApp/app/proguard-rules.pro` configurado para ofuscar y proteger el código en producción sin afectar la serialización de Retrofit, Room ni ZXing.
 
 ---
 

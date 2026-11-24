@@ -42,6 +42,11 @@ class LoginRequest(BaseModel):
     email: str
     password: str
 
+class AccountDeletionRequest(BaseModel):
+    email: str
+    password: Optional[str] = None
+    reason: Optional[str] = None
+
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"

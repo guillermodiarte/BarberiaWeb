@@ -51,6 +51,7 @@ fun AppNavHost(
     val coroutineScope = rememberCoroutineScope()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var showDeleteAccountDialog by remember { mutableStateOf(false) }
 
     if (token == "loading") return
 
@@ -235,10 +236,14 @@ fun AppNavHost(
                     DrawerMenuItem(title = "Cerrar Sesión", icon = Icons.Default.ExitToApp, selected = false, tint = Rose500) {
                         coroutineScope.launch {
                             drawerState.close()
-                            repository.logout()
-                            navController.navigate(Screen.Login.route) {
-                                popUpTo(0) { inclusive = true }
-                            }
+                            showLogoutDialog = true
+                        }
+                    }
+
+                    DrawerMenuItem(title = "Eliminar Mi Cuenta", icon = Icons.Default.DeleteForever, selected = false, tint = Slate500) {
+                        coroutineScope.launch {
+                            drawerState.close()
+                            showDeleteAccountDialog = true
                         }
                     }
                 }
@@ -458,6 +463,71 @@ fun AppNavHost(
             },
             dismissButton = {
                 TextButton(onClick = { showLogoutDialog = false }) {
+                    Text("Cancelar", color = Slate400)
+                }
+            },
+            containerColor = Slate900,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+
+    if (showDeleteAccountDialog) {
+        var deleteLoading by remember { mutableStateOf(false) }
+        var errorMessage by remember { mutableStateOf<String?>(null) }
+
+        AlertDialog(
+            onDismissRequest = {
+                if (!deleteLoading) showDeleteAccountDialog = false
+            },
+            title = {
+                Text("Eliminar Mi Cuenta", color = Rose500, fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Column {
+                    Text(
+                        "¿Estás completamente seguro de que deseas eliminar tu cuenta?\n\nEsta acción es irreversible y purgará de forma permanente tu acceso, correo electrónico y datos personales de esta barbería.",
+                        color = Slate300,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    if (errorMessage != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(errorMessage!!, color = Rose500, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        deleteLoading = true
+                        errorMessage = null
+                        coroutineScope.launch {
+                            val res = repository.deleteOwnAccount()
+                            deleteLoading = false
+                            res.onSuccess {
+                                showDeleteAccountDialog = false
+                                navController.navigate(Screen.Login.route) {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            }.onFailure { err ->
+                                errorMessage = err.message
+                            }
+                        }
+                    },
+                    enabled = !deleteLoading,
+                    colors = ButtonDefaults.buttonColors(containerColor = Rose500)
+                ) {
+                    if (deleteLoading) {
+                        CircularProgressIndicator(color = Slate50, modifier = Modifier.size(16.dp))
+                    } else {
+                        Text("Sí, Eliminar Definitivamente", color = Slate50, fontWeight = FontWeight.Bold)
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showDeleteAccountDialog = false },
+                    enabled = !deleteLoading
+                ) {
                     Text("Cancelar", color = Slate400)
                 }
             },

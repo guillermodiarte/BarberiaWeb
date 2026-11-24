@@ -409,4 +409,32 @@ class BarberRepository(private val context: Context) {
     suspend fun logout() {
         sessionManager.clearSession()
     }
+
+    suspend fun deleteOwnAccount(): Result<String> {
+        return try {
+            val response = apiService.deleteOwnAccount()
+            if (response.isSuccessful) {
+                sessionManager.clearSession()
+                Result.success(response.body()?.message ?: "Cuenta eliminada exitosamente")
+            } else {
+                Result.failure(Exception("Error al eliminar cuenta (${response.code()})"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun requestAccountDeletion(email: String, password: String? = null, reason: String? = null): Result<String> {
+        return try {
+            val response = apiService.requestAccountDeletion(AccountDeletionRequestDto(email, password, reason))
+            if (response.isSuccessful) {
+                sessionManager.clearSession()
+                Result.success(response.body()?.message ?: "Solicitud de eliminación procesada")
+            } else {
+                Result.failure(Exception("No se pudo procesar la eliminación (${response.code()})"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Política de Privacidad | BarberShop CRM</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #f59e0b;
+            --border: #334155;
+        }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding: 40px 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: var(--card-bg);
+            padding: 40px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .header {
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 24px;
+            margin-bottom: 32px;
+        }
+        .badge {
+            display: inline-block;
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--accent);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+        h1 {
+            font-size: 28px;
+            color: #ffffff;
+            margin-bottom: 8px;
+        }
+        .date {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+        h2 {
+            font-size: 20px;
+            color: var(--accent);
+            margin-top: 28px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        p, ul {
+            color: var(--text-muted);
+            font-size: 15px;
+            margin-bottom: 16px;
+        }
+        ul {
+            padding-left: 24px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        strong {
+            color: var(--text-main);
+        }
+        .highlight-box {
+            background: rgba(15, 23, 42, 0.6);
+            border-left: 4px solid var(--accent);
+            padding: 16px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .highlight-box p {
+            margin-bottom: 0;
+            color: var(--text-main);
+        }
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 13px;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border);
+            padding-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <span class="badge">POLÍTICA DE PRIVACIDAD OFICIAL</span>
+            <h1>BarberShop CRM</h1>
+            <p class="date">Última actualización: 23 de Noviembre de 2026</p>
+        </div>
+
+        <p>Esta Política de Privacidad describe cómo la aplicación móvil <strong>BarberShop CRM</strong> recopila, utiliza, almacena y protege la información del usuario al utilizar nuestros servicios de gestión de salones y barberías.</p>
+
+        <h2>1. Uso de Permisos del Dispositivo</h2>
+        <div class="highlight-box">
+            <p><strong>Cámara (android.permission.CAMERA):</strong> La aplicación utiliza el sensor de la cámara única y exclusivamente para escanear el código QR de vinculación que conecta la app con el servidor del salón o barbería del usuario. <strong>Bajo ninguna circunstancia se graban videos, se toman fotografías ni se transmiten imágenes visuales a servidores remotos.</strong> El procesamiento óptico se ejecuta 100% de manera local en el teléfono móvil.</p>
+        </div>
+        <ul>
+            <li><strong>Acceso a Internet y Estado de Red (INTERNET, ACCESS_NETWORK_STATE):</strong> Requerido para sincronizar cortes, catálogo de servicios, inventario y cierres de caja con la instancia del salón, así como detectar conectividad para activar el modo fuera de línea (Offline-First).</li>
+        </ul>
+
+        <h2>2. Información que Recopilamos</h2>
+        <p>Al utilizar BarberShop CRM, la aplicación puede sincronizar los siguientes datos estrictamente necesarios para la operativa comercial:</p>
+        <ul>
+            <li><strong>Datos del Profesional / Barbero:</strong> Nombre completo, correo electrónico, rol dentro del salón y credenciales de acceso protegidas mediante algoritmos de cifrado de una sola vía (hash).</li>
+            <li><strong>Datos de Clientes Registrados:</strong> Nombre, número telefónico y saldo de puntos de fidelización, utilizados para la reserva de citas y canje de beneficios en el comercio.</li>
+            <li><strong>Registros Operativos:</strong> Historial de cortes, ventas de insumos/productos, arqueos de caja y comisiones generadas.</li>
+        </ul>
+
+        <h2>3. Almacenamiento y Protección de Datos</h2>
+        <p>BarberShop CRM está diseñado bajo un modelo <strong>Multi-Tenant descentralizado</strong>. Toda la información pertenece al salón correspondiente y se transfiere mediante protocolos seguros y cifrados (HTTPS / TLS).</p>
+        <p>Los datos almacenados localmente en el dispositivo móvil para operar sin conexión a Internet (Offline-First) residen en una base de datos interna aislada (SQLite Room) protegida por el entorno seguro del sistema operativo Android.</p>
+
+        <h2>4. No Divulgación a Terceros</h2>
+        <p><strong>No vendemos, no alquilamos y no compartimos</strong> su información personal ni la de sus clientes con redes de publicidad, anunciantes ni empresas de minería de datos. Los datos existen únicamente con el fin de facilitar la administración interna del salón de barbería.</p>
+
+        <h2>5. Eliminación de Cuenta y Datos (Derecho al Olvido)</h2>
+        <p>En estricto cumplimiento con las políticas de Google Play y normativas internacionales de protección de datos (GDPR):</p>
+        <ul>
+            <li><strong>Desde la Aplicación Móvil (Sesión Iniciada):</strong> Cualquier usuario puede dirigirse al menú lateral y presionar <strong>"Eliminar Mi Cuenta"</strong>. El sistema purgará de inmediato su correo, número de teléfono y accesos del servidor.</li>
+            <li><strong>Desde la Pantalla de Login (Sin Sesión o Cuenta Bloqueada):</strong> Se encuentra disponible la opción <strong>"Solicitar eliminación de cuenta"</strong>, la cual permite tramitar la baja y desvinculación inmediata ingresando su correo electrónico registrado.</li>
+        </ul>
+
+        <h2>6. Contacto y Responsable del Tratamiento</h2>
+        <p>Si tiene dudas, preguntas sobre esta política o desea solicitar la eliminación manual de información almacenada, puede contactarse con el equipo de soporte técnico a través del correo electrónico o canal de atención de su salón administrador.</p>
+
+        <div class="footer">
+            <p>&copy; 2026 BarberShop CRM. Todos los derechos reservados.</p>
+        </div>
+    </div>
+</body>
+</html>

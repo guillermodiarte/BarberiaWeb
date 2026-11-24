@@ -30,6 +30,11 @@ fun LoginScreen(
     var password by remember { mutableStateOf("barbero123") }
     var loading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var showDeleteAccountDialog by remember { mutableStateOf(false) }
+    var deleteEmail by remember { mutableStateOf("") }
+    var deletePassword by remember { mutableStateOf("") }
+    var deleteLoading by remember { mutableStateOf(false) }
+    var deleteMessage by remember { mutableStateOf<String?>(null) }
 
     val salonName by sessionManager.salonNameFlow.collectAsState(initial = "BarberShop Elite")
     val isSuspended by sessionManager.isSuspendedFlow.collectAsState(initial = false)
@@ -180,7 +185,122 @@ fun LoginScreen(
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                TextButton(onClick = {
+                    deleteEmail = email
+                    deleteMessage = null
+                    showDeleteAccountDialog = true
+                }) {
+                    Text(
+                        text = "Solicitar eliminación de cuenta",
+                        color = Slate500,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             }
         }
+    }
+
+    if (showDeleteAccountDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!deleteLoading) showDeleteAccountDialog = false
+            },
+            title = {
+                Text(
+                    text = "Eliminar Cuenta y Datos",
+                    color = Slate50,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        text = "En cumplimiento de las políticas de privacidad y protección de datos, puedes solicitar la eliminación permanente de tu cuenta y la purga de tus datos personales.",
+                        color = Slate400,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    if (deleteMessage != null) {
+                        Text(
+                            text = deleteMessage!!,
+                            color = if (deleteMessage!!.contains("eliminad", ignoreCase = true)) Amber500 else Rose500,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+
+                    OutlinedTextField(
+                        value = deleteEmail,
+                        onValueChange = { deleteEmail = it },
+                        label = { Text("Correo Electrónico Registrado", color = Slate400) },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Slate50,
+                            unfocusedTextColor = Slate200,
+                            focusedBorderColor = Rose500,
+                            unfocusedBorderColor = Slate700
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = deletePassword,
+                        onValueChange = { deletePassword = it },
+                        label = { Text("Contraseña (opcional si está bloqueada)", color = Slate400) },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Slate50,
+                            unfocusedTextColor = Slate200,
+                            focusedBorderColor = Rose500,
+                            unfocusedBorderColor = Slate700
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        deleteLoading = true
+                        deleteMessage = null
+                        coroutineScope.launch {
+                            val res = repository.requestAccountDeletion(
+                                email = deleteEmail,
+                                password = deletePassword.ifBlank { null }
+                            )
+                            deleteLoading = false
+                            res.onSuccess { msg ->
+                                deleteMessage = msg
+                            }.onFailure { err ->
+                                deleteMessage = err.message
+                            }
+                        }
+                    },
+                    enabled = !deleteLoading && deleteEmail.isNotBlank(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Rose500)
+                ) {
+                    if (deleteLoading) {
+                        CircularProgressIndicator(color = Slate50, modifier = Modifier.size(16.dp))
+                    } else {
+                        Text("Eliminar Definitivamente", color = Slate50, fontWeight = FontWeight.Bold)
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showDeleteAccountDialog = false },
+                    enabled = !deleteLoading
+                ) {
+                    Text("Cancelar", color = Slate400)
+                }
+            },
+            containerColor = Slate900
+        )
     }
 }

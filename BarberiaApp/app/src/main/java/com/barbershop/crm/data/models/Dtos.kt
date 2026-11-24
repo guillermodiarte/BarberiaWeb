@@ -7,6 +7,17 @@ data class LoginRequest(
     val password: String
 )
 
+data class AccountDeletionRequestDto(
+    val email: String,
+    val password: String? = null,
+    val reason: String? = null
+)
+
+data class GenericMessageResponse(
+    val success: Boolean? = true,
+    val message: String
+)
+
 data class TokenResponse(
     @SerializedName("access_token") val accessToken: String,
     @SerializedName("token_type") val tokenType: String,
