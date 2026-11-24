@@ -142,6 +142,9 @@ interface ApiService {
     @GET("api/settings")
     suspend fun getSettings(): Response<List<SettingDto>>
 
+    @GET("api/settings/public")
+    suspend fun getPublicSettings(): Response<Map<String, String>>
+
     @PUT("api/settings/{key}")
     suspend fun updateSetting(
         @Path("key") key: String,

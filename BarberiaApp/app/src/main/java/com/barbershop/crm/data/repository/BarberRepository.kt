@@ -116,7 +116,35 @@ class BarberRepository(private val context: Context) {
         }
     }
 
+    suspend fun refreshSettings(): Result<Unit> {
+        return try {
+            val resp = networkClient.getApiService().getPublicSettings()
+            if (resp.isSuccessful && resp.body() != null) {
+                val settings = resp.body()!!
+                val isBookingEnabled = settings["online_booking_enabled"] != "false"
+                sessionManager.setBookingEnabled(isBookingEnabled)
+                val salonName = settings["barbershop_name"]
+                if (!salonName.isNullOrBlank()) {
+                    sessionManager.setSalonName(salonName)
+                }
+                if (!isBookingEnabled) {
+                    db.bookingDao().clearAll()
+                }
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Error al consultar configuraciones"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun refreshBookings(): Result<Unit> {
+        val isEnabled = sessionManager.isBookingEnabled()
+        if (!isEnabled) {
+            db.bookingDao().clearAll()
+            return Result.success(Unit)
+        }
         return try {
             val resp = networkClient.getApiService().getBookings()
             if (resp.isSuccessful && resp.body() != null) {
@@ -208,6 +236,7 @@ class BarberRepository(private val context: Context) {
         val role = sessionManager.getRole()
         val isAdmin = role == "admin" || role == "superadmin"
 
+        refreshSettings()
         refreshServices()
         refreshCustomers()
         refreshProducts()

@@ -38,6 +38,7 @@ class SessionManager(private val context: Context) {
         private val KEY_ROLE = stringPreferencesKey("user_role") // superadmin, admin, barber
         private val KEY_IS_SUSPENDED = booleanPreferencesKey("is_suspended")
         private val KEY_ACCOUNTS_JSON = stringPreferencesKey("saved_accounts_json")
+        private val KEY_BOOKING_ENABLED = booleanPreferencesKey("online_booking_enabled")
     }
 
     private val gson = Gson()
@@ -48,6 +49,7 @@ class SessionManager(private val context: Context) {
     val roleFlow: Flow<String> = context.dataStore.data.map { it[KEY_ROLE] ?: "barber" }
     val fullNameFlow: Flow<String> = context.dataStore.data.map { it[KEY_FULL_NAME] ?: "" }
     val isSuspendedFlow: Flow<Boolean> = context.dataStore.data.map { it[KEY_IS_SUSPENDED] ?: false }
+    val isBookingEnabledFlow: Flow<Boolean> = context.dataStore.data.map { it[KEY_BOOKING_ENABLED] ?: true }
 
     val accountsFlow: Flow<List<SalonAccount>> = context.dataStore.data.map { prefs ->
         val json = prefs[KEY_ACCOUNTS_JSON]
@@ -112,6 +114,22 @@ class SessionManager(private val context: Context) {
             )
 
             prefs[KEY_ACCOUNTS_JSON] = gson.toJson(accounts)
+        }
+    }
+
+    suspend fun setBookingEnabled(enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_BOOKING_ENABLED] = enabled
+        }
+    }
+
+    suspend fun isBookingEnabled(): Boolean {
+        return context.dataStore.data.first()[KEY_BOOKING_ENABLED] ?: true
+    }
+
+    suspend fun setSalonName(name: String) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_SALON_NAME] = name.trim()
         }
     }
 

@@ -48,6 +48,7 @@ fun AppNavHost(
     val salonName by sessionManager.salonNameFlow.collectAsState(initial = "BarberShop Elite")
     val savedAccounts by sessionManager.accountsFlow.collectAsState(initial = emptyList())
     val currentTenantUrl by sessionManager.tenantUrlFlow.collectAsState(initial = SessionManager.DEFAULT_TENANT_URL)
+    val isBookingEnabled by sessionManager.isBookingEnabledFlow.collectAsState(initial = true)
     val coroutineScope = rememberCoroutineScope()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     var showLogoutDialog by remember { mutableStateOf(false) }
@@ -62,6 +63,12 @@ fun AppNavHost(
     val currentRoute = navBackStackEntry?.destination?.route ?: Screen.Dashboard.route
 
     val isAuthScreen = currentRoute == Screen.Login.route || currentRoute == Screen.Tenant.route
+
+    LaunchedEffect(token, currentTenantUrl) {
+        if (!token.isNullOrEmpty()) {
+            repository.refreshSettings()
+        }
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -211,9 +218,11 @@ fun AppNavHost(
                         navController.navigate(Screen.Clientes.route)
                     }
 
-                    DrawerMenuItem(title = "Reservas & Turnos", icon = Icons.Default.CalendarMonth, selected = currentRoute == Screen.Reservas.route) {
-                        coroutineScope.launch { drawerState.close() }
-                        navController.navigate(Screen.Reservas.route)
+                    if (isBookingEnabled) {
+                        DrawerMenuItem(title = "Reservas & Turnos", icon = Icons.Default.CalendarMonth, selected = currentRoute == Screen.Reservas.route) {
+                            coroutineScope.launch { drawerState.close() }
+                            navController.navigate(Screen.Reservas.route)
+                        }
                     }
 
                     if (isAdmin) {
@@ -312,13 +321,15 @@ fun AppNavHost(
                             label = { Text("Cortes") },
                             colors = NavigationBarItemDefaults.colors(selectedIconColor = Amber500, selectedTextColor = Amber500, indicatorColor = Slate800)
                         )
-                        NavigationBarItem(
-                            selected = currentRoute == Screen.Reservas.route,
-                            onClick = { navController.navigate(Screen.Reservas.route) },
-                            icon = { Icon(Icons.Default.CalendarMonth, contentDescription = null) },
-                            label = { Text("Turnos") },
-                            colors = NavigationBarItemDefaults.colors(selectedIconColor = Amber500, selectedTextColor = Amber500, indicatorColor = Slate800)
-                        )
+                        if (isBookingEnabled) {
+                            NavigationBarItem(
+                                selected = currentRoute == Screen.Reservas.route,
+                                onClick = { navController.navigate(Screen.Reservas.route) },
+                                icon = { Icon(Icons.Default.CalendarMonth, contentDescription = null) },
+                                label = { Text("Turnos") },
+                                colors = NavigationBarItemDefaults.colors(selectedIconColor = Amber500, selectedTextColor = Amber500, indicatorColor = Slate800)
+                            )
+                        }
                         NavigationBarItem(
                             selected = currentRoute == Screen.Caja.route,
                             onClick = { navController.navigate(Screen.Caja.route) },
@@ -423,7 +434,56 @@ fun AppNavHost(
                 }
 
                 composable(Screen.Reservas.route) {
-                    ReservasScreen(repository = repository)
+                    if (isBookingEnabled) {
+                        ReservasScreen(repository = repository)
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Slate950)
+                                .padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = Slate900),
+                                shape = RoundedCornerShape(16.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(24.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.CalendarMonth,
+                                        contentDescription = null,
+                                        tint = Amber500,
+                                        modifier = Modifier.size(48.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(
+                                        text = "Reservas Web Pausadas",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = Slate50,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = "El módulo de turnos y reservas web se encuentra actualmente pausado desde la configuración del salón.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Slate400,
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                    )
+                                    Spacer(modifier = Modifier.height(20.dp))
+                                    Button(
+                                        onClick = { navController.navigate(Screen.Dashboard.route) },
+                                        colors = ButtonDefaults.buttonColors(containerColor = Amber500)
+                                    ) {
+                                        Text("Ir al Inicio", color = Slate950, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
 
                 composable(Screen.Barberos.route) {
