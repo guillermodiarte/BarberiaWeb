@@ -48,6 +48,7 @@ class SessionManager(private val context: Context) {
     val salonNameFlow: Flow<String> = context.dataStore.data.map { it[KEY_SALON_NAME] ?: DEFAULT_SALON_NAME }
     val roleFlow: Flow<String> = context.dataStore.data.map { it[KEY_ROLE] ?: "barber" }
     val fullNameFlow: Flow<String> = context.dataStore.data.map { it[KEY_FULL_NAME] ?: "" }
+    val emailFlow: Flow<String> = context.dataStore.data.map { it[KEY_EMAIL] ?: "" }
     val isSuspendedFlow: Flow<Boolean> = context.dataStore.data.map { it[KEY_IS_SUSPENDED] ?: false }
     val isBookingEnabledFlow: Flow<Boolean> = context.dataStore.data.map { it[KEY_BOOKING_ENABLED] ?: true }
 

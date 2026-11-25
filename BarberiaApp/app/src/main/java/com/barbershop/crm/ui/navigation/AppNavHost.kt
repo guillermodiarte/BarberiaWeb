@@ -47,6 +47,8 @@ fun AppNavHost(
     val navController = rememberNavController()
     val token by sessionManager.tokenFlow.collectAsState(initial = "loading")
     val role by sessionManager.roleFlow.collectAsState(initial = "barber")
+    val fullName by sessionManager.fullNameFlow.collectAsState(initial = "")
+    val email by sessionManager.emailFlow.collectAsState(initial = "")
     val salonName by sessionManager.salonNameFlow.collectAsState(initial = "BarberShop Elite")
     val savedAccounts by sessionManager.accountsFlow.collectAsState(initial = emptyList())
     val currentTenantUrl by sessionManager.tenantUrlFlow.collectAsState(initial = SessionManager.DEFAULT_TENANT_URL)
@@ -111,6 +113,23 @@ fun AppNavHost(
                                         color = Slate50,
                                         maxLines = 1
                                     )
+                                    if (fullName.isNotBlank()) {
+                                        Text(
+                                            text = "👤 $fullName",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Cyan400,
+                                            maxLines = 1
+                                        )
+                                    }
+                                    if (email.isNotBlank()) {
+                                        Text(
+                                            text = email,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Slate400,
+                                            maxLines = 1
+                                        )
+                                    }
                                     Text(
                                         text = "Rol: ${role.uppercase()}",
                                         style = MaterialTheme.typography.labelSmall,
@@ -134,6 +153,7 @@ fun AppNavHost(
                                             .clickable {
                                                 coroutineScope.launch {
                                                     drawerState.close()
+                                                    repository.clearLocalCache()
                                                     sessionManager.switchAccount(acc.salonUrl)
                                                     repository.refreshAll()
                                                 }
@@ -269,7 +289,30 @@ fun AppNavHost(
             topBar = {
                 if (!isAuthScreen && currentRoute != Screen.NuevoCorte.route) {
                     TopAppBar(
-                        title = { Text(salonName, color = Slate50, fontWeight = FontWeight.Bold, maxLines = 1) },
+                        title = {
+                            Column {
+                                Text(
+                                    text = salonName,
+                                    color = Slate50,
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    maxLines = 1
+                                )
+                                if (fullName.isNotBlank()) {
+                                    val roleLabel = when (role.lowercase()) {
+                                        "superadmin" -> "SuperAdmin"
+                                        "admin" -> "Admin"
+                                        else -> "Barbero"
+                                    }
+                                    Text(
+                                        text = "👤 $fullName · $roleLabel",
+                                        color = Amber400,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        },
                         navigationIcon = {
                             TextButton(
                                 onClick = { coroutineScope.launch { drawerState.open() } },

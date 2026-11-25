@@ -214,12 +214,21 @@ export const AdminLayout = () => {
             </h1>
           </div>
 
-          <div className="flex items-center space-x-4 text-xs">
-            <span className="hidden sm:inline-block text-slate-400">
+          <div className="flex items-center space-x-3 md:space-x-4 text-xs">
+            <div className="flex items-center space-x-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-full">
+              <div className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-[10px] font-bold">
+                {user?.full_name ? user.full_name.charAt(0).toUpperCase() : 'U'}
+              </div>
+              <span className="text-white font-semibold max-w-[140px] truncate">{user?.full_name}</span>
+              <span className="hidden sm:inline-block text-[10px] text-cyan-400 font-bold uppercase">
+                · {isSuperAdmin ? 'SuperAdmin' : isAdmin ? 'Admin' : 'Barbero'}
+              </span>
+            </div>
+            <span className="hidden lg:inline-block text-slate-400">
               📅 {new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
             </span>
-            <div className="h-4 w-px bg-slate-800 hidden sm:block" />
-            <span className="text-amber-400 font-semibold font-mono">Moneda: ARS ($)</span>
+            <div className="h-4 w-px bg-slate-800 hidden lg:block" />
+            <span className="hidden sm:inline-block text-amber-400 font-semibold font-mono">Moneda: ARS ($)</span>
           </div>
         </header>
 

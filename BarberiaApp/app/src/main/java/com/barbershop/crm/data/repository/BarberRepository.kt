@@ -8,7 +8,9 @@ import com.barbershop.crm.core.network.NetworkClient
 import com.barbershop.crm.core.session.SessionManager
 import com.barbershop.crm.core.sync.SyncWorker
 import com.barbershop.crm.data.models.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -268,6 +270,9 @@ class BarberRepository(private val context: Context) {
                     return Result.failure(Exception("La cuenta se encuentra suspendida."))
                 }
 
+                // Limpiar cache local del usuario/barbería anterior antes de sincronizar
+                clearLocalCache()
+
                 sessionManager.saveSession(
                     token = tokenData.accessToken,
                     userId = user.id,
@@ -439,7 +444,14 @@ class BarberRepository(private val context: Context) {
         )
     }
 
+    suspend fun clearLocalCache() {
+        withContext(Dispatchers.IO) {
+            db.clearAllTables()
+        }
+    }
+
     suspend fun logout() {
+        clearLocalCache()
         sessionManager.clearSession()
     }
 

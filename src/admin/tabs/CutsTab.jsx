@@ -26,11 +26,11 @@ export const CutsTab = ({ user }) => {
   });
   const [loading, setLoading] = useState(true);
 
-  // Filters - By default show TODAY's cuts as requested
+  // Filters - By default show active shift (unsettled cuts) to match mobile app
   const [selectedBarberFilter, setSelectedBarberFilter] = useState('');
-  const [isSettledFilter, setIsSettledFilter] = useState('');
-  const [dateFrom, setDateFrom] = useState(getTodayStr());
-  const [dateTo, setDateTo] = useState(getTodayStr());
+  const [isSettledFilter, setIsSettledFilter] = useState('false');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   // Modal create
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -375,7 +375,8 @@ export const CutsTab = ({ user }) => {
     }
   }
 
-  const isTodayActive = dateFrom === getTodayStr() && dateTo === getTodayStr();
+  const isShiftActive = isSettledFilter === 'false' && !dateFrom && !dateTo;
+  const isTodayActive = dateFrom === getTodayStr() && dateTo === getTodayStr() && isSettledFilter === '';
 
   return (
     <div className="space-y-6">
@@ -387,7 +388,7 @@ export const CutsTab = ({ user }) => {
             <span>Registro de Cortes y Servicios (CRM)</span>
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            Muestra por defecto los cortes del día. Puedes consultar cualquier otra fecha mediante los filtros.
+            Muestra por defecto los cortes del turno activo (sin cierre de caja), igual que la app móvil.
           </p>
         </div>
 
@@ -406,16 +407,37 @@ export const CutsTab = ({ user }) => {
           <div className="flex items-center space-x-2">
             <Calendar className="w-4 h-4 text-amber-400" />
             <span className="text-xs font-bold text-white">
-              {isTodayActive ? 'Mostrando Cortes de HOY' : 'Filtrando por Rango de Fechas'}
+              {isShiftActive
+                ? 'Mostrando Turno Activo (Sin Liquidar)'
+                : isTodayActive
+                ? 'Mostrando Cortes de HOY'
+                : !dateFrom && !dateTo && isSettledFilter === ''
+                ? 'Mostrando Histórico Completo'
+                : 'Filtrando Cortes'}
             </span>
             <span className="text-[11px] text-slate-400 font-mono">
               ({records.length} {records.length === 1 ? 'servicio' : 'servicios'})
             </span>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => {
+                setIsSettledFilter('false');
+                setDateFrom('');
+                setDateTo('');
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                isShiftActive
+                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                  : 'bg-slate-800 text-slate-300 hover:text-white'
+              }`}
+            >
+              ⚡ Turno Activo
+            </button>
+            <button
+              onClick={() => {
+                setIsSettledFilter('');
                 setDateFrom(getTodayStr());
                 setDateTo(getTodayStr());
               }}
@@ -429,11 +451,12 @@ export const CutsTab = ({ user }) => {
             </button>
             <button
               onClick={() => {
+                setIsSettledFilter('');
                 setDateFrom('');
                 setDateTo('');
               }}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                !dateFrom && !dateTo
+                !dateFrom && !dateTo && isSettledFilter === ''
                   ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
                   : 'bg-slate-800 text-slate-300 hover:text-white'
               }`}
