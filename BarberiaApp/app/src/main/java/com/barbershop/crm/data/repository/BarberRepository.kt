@@ -19,6 +19,7 @@ class BarberRepository(private val context: Context) {
     private val sessionManager = SessionManager(context)
 
     fun getLocalRecords(): Flow<List<ServiceRecordEntity>> = db.serviceRecordDao().getAllRecords()
+    fun getActiveShiftRecords(): Flow<List<ServiceRecordEntity>> = db.serviceRecordDao().getUnsettledRecords()
     fun getLocalServices(): Flow<List<ServiceEntity>> = db.serviceDao().getActiveServices()
     fun getLocalCustomers(): Flow<List<CustomerEntity>> = db.customerDao().getAllCustomers()
     fun getLocalProducts(): Flow<List<ProductEntity>> = db.productDao().getActiveProducts()
@@ -218,6 +219,9 @@ class BarberRepository(private val context: Context) {
                         paymentMethod = it.paymentMethod,
                         notes = it.notes,
                         createdAt = it.createdAt,
+                        isSettled = it.isSettled,
+                        barberEarnings = it.barberEarnings,
+                        shopEarnings = it.shopEarnings,
                         syncStatus = SyncStatus.SYNCED
                     )
                 }

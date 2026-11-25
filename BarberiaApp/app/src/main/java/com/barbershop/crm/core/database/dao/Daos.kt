@@ -9,6 +9,9 @@ interface ServiceRecordDao {
     @Query("SELECT * FROM service_records ORDER BY localId DESC")
     fun getAllRecords(): Flow<List<ServiceRecordEntity>>
 
+    @Query("SELECT * FROM service_records WHERE isSettled = 0 OR syncStatus != 'SYNCED' ORDER BY localId DESC")
+    fun getUnsettledRecords(): Flow<List<ServiceRecordEntity>>
+
     @Query("SELECT * FROM service_records WHERE syncStatus = 'PENDING_CREATION'")
     suspend fun getPendingCreationRecords(): List<ServiceRecordEntity>
 

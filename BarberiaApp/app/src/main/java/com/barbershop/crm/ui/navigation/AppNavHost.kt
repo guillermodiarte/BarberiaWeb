@@ -31,7 +31,9 @@ import com.barbershop.crm.ui.screens.login.LoginScreen
 import com.barbershop.crm.ui.screens.reservas.ReservasScreen
 import com.barbershop.crm.ui.screens.servicios.ServiciosScreen
 import com.barbershop.crm.ui.screens.tenant.TenantScreen
+import com.barbershop.crm.ui.screens.estadisticas.EstadisticasScreen
 import com.barbershop.crm.ui.screens.ventas.VentasScreen
+import com.barbershop.crm.ui.screens.cortes.HistorialScreen
 import com.barbershop.crm.ui.theme.*
 import kotlinx.coroutines.launch
 
@@ -217,6 +219,10 @@ fun AppNavHost(
                         coroutineScope.launch { drawerState.close() }
                         navController.navigate(Screen.Clientes.route)
                     }
+                    DrawerMenuItem(title = "Estadísticas & Finanzas", icon = Icons.Default.BarChart, selected = currentRoute == Screen.Estadisticas.route) {
+                        coroutineScope.launch { drawerState.close() }
+                        navController.navigate(Screen.Estadisticas.route)
+                    }
 
                     if (isBookingEnabled) {
                         DrawerMenuItem(title = "Reservas & Turnos", icon = Icons.Default.CalendarMonth, selected = currentRoute == Screen.Reservas.route) {
@@ -321,15 +327,13 @@ fun AppNavHost(
                             label = { Text("Cortes") },
                             colors = NavigationBarItemDefaults.colors(selectedIconColor = Amber500, selectedTextColor = Amber500, indicatorColor = Slate800)
                         )
-                        if (isBookingEnabled) {
-                            NavigationBarItem(
-                                selected = currentRoute == Screen.Reservas.route,
-                                onClick = { navController.navigate(Screen.Reservas.route) },
-                                icon = { Icon(Icons.Default.CalendarMonth, contentDescription = null) },
-                                label = { Text("Turnos") },
-                                colors = NavigationBarItemDefaults.colors(selectedIconColor = Amber500, selectedTextColor = Amber500, indicatorColor = Slate800)
-                            )
-                        }
+                        NavigationBarItem(
+                            selected = currentRoute == Screen.Estadisticas.route,
+                            onClick = { navController.navigate(Screen.Estadisticas.route) },
+                            icon = { Icon(Icons.Default.BarChart, contentDescription = null) },
+                            label = { Text("Finanzas") },
+                            colors = NavigationBarItemDefaults.colors(selectedIconColor = Amber500, selectedTextColor = Amber500, indicatorColor = Slate800)
+                        )
                         NavigationBarItem(
                             selected = currentRoute == Screen.Caja.route,
                             onClick = { navController.navigate(Screen.Caja.route) },
@@ -397,7 +401,8 @@ fun AppNavHost(
                 composable(Screen.Cortes.route) {
                     CortesScreen(
                         repository = repository,
-                        onNavigateToNuevo = { navController.navigate(Screen.NuevoCorte.route) }
+                        onNavigateToNuevo = { navController.navigate(Screen.NuevoCorte.route) },
+                        onNavigateToHistorial = { navController.navigate(Screen.Historial.route) }
                     )
                 }
 
@@ -495,6 +500,17 @@ fun AppNavHost(
 
                 composable(Screen.Config.route) {
                     ConfigScreen(networkClient = networkClient)
+                }
+
+                composable(Screen.Estadisticas.route) {
+                    EstadisticasScreen(repository = repository)
+                }
+
+                composable(Screen.Historial.route) {
+                    HistorialScreen(
+                        repository = repository,
+                        onNavigateBack = { navController.popBackStack() }
+                    )
                 }
             }
         }

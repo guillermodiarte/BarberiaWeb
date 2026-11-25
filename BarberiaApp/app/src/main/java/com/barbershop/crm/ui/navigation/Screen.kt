@@ -15,4 +15,6 @@ sealed class Screen(val route: String, val title: String) {
     object Clientes : Screen("clientes", "Clientes & Puntos")
     object Reservas : Screen("reservas", "Reservas & Turnos")
     object Config : Screen("config", "Configuración")
+    object Estadisticas : Screen("estadisticas", "Estadísticas & Finanzas")
+    object Historial : Screen("historial", "Historial Completo")
 }

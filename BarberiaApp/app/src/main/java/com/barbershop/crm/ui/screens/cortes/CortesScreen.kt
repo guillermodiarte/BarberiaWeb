@@ -9,7 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudUpload
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,10 +26,12 @@ import kotlinx.coroutines.launch
 @Composable
 fun CortesScreen(
     repository: BarberRepository,
-    onNavigateToNuevo: () -> Unit
+    onNavigateToNuevo: () -> Unit,
+    onNavigateToHistorial: () -> Unit = {}
 ) {
     val coroutineScope = rememberCoroutineScope()
-    val records by repository.getLocalRecords().collectAsState(initial = emptyList())
+    // Solo muestra los cortes del turno activo (no liquidados)
+    val records by repository.getActiveShiftRecords().collectAsState(initial = emptyList())
     var isRefreshing by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -56,13 +58,39 @@ fun CortesScreen(
                 .padding(padding)
                 .padding(horizontal = 16.dp)
         ) {
-            Text(
-                text = "Historial de Cortes (CRM)",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = Slate50,
-                modifier = Modifier.padding(vertical = 16.dp)
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "Turno Activo",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Slate50
+                    )
+                    Text(
+                        text = "${records.size} corte${if (records.size != 1) "s" else ""} en este turno",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Slate400
+                    )
+                }
+                TextButton(
+                    onClick = onNavigateToHistorial,
+                    colors = ButtonDefaults.textButtonColors(contentColor = Cyan500)
+                ) {
+                    Icon(
+                        Icons.Default.History,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Historial", style = MaterialTheme.typography.labelMedium)
+                }
+            }
 
             if (isRefreshing && records.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -73,13 +101,52 @@ fun CortesScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "Aún no hay cortes registrados.",
-                        color = Slate400,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "Sin cortes en el turno activo",
+                            color = Slate400,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Los cortes aparecerán aquí hasta el cierre de caja",
+                            color = Slate400.copy(alpha = 0.7f),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
             } else {
+                // Resumen del turno
+                val totalTurno = records.sumOf { it.price }
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Slate800.copy(alpha = 0.6f)),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Total del turno",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Slate400
+                        )
+                        Text(
+                            text = formatPrice(totalTurno),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Amber400
+                        )
+                    }
+                }
+
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
@@ -129,6 +196,15 @@ fun CortesScreen(
                                         text = record.customerName ?: "Cliente ocasional",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = Cyan500
+                                    )
+                                }
+
+                                if (record.paymentMethod != null) {
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = record.paymentMethod,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Slate400.copy(alpha = 0.7f)
                                     )
                                 }
 

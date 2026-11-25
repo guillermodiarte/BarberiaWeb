@@ -191,6 +191,9 @@ class SyncWorker(
                         paymentMethod = it.paymentMethod,
                         notes = it.notes,
                         createdAt = it.createdAt,
+                        isSettled = it.isSettled,
+                        barberEarnings = it.barberEarnings,
+                        shopEarnings = it.shopEarnings,
                         syncStatus = SyncStatus.SYNCED
                     )
                 }

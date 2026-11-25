@@ -26,6 +26,9 @@ data class ServiceRecordEntity(
     val paymentMethod: String, // cash, transfer_barber, transfer_shop
     val notes: String? = null,
     val createdAt: String,
+    val isSettled: Boolean = false,
+    val barberEarnings: Double = 0.0,
+    val shopEarnings: Double = 0.0,
     val syncStatus: SyncStatus = SyncStatus.SYNCED
 )
 
