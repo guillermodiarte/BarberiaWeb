@@ -7,7 +7,9 @@ import com.barbershop.crm.core.database.AppDatabase
 import com.barbershop.crm.core.database.entities.*
 import com.barbershop.crm.core.network.NetworkClient
 import com.barbershop.crm.core.session.SessionManager
+import com.barbershop.crm.core.utils.ReceiptImageUtils
 import com.barbershop.crm.data.models.ServiceRecordCreateDto
+import java.io.File
 
 class SyncWorker(
     appContext: Context,
@@ -47,6 +49,17 @@ class SyncWorker(
             // 2. SUBIR CORTES PENDIENTES
             val pendingRecords = db.serviceRecordDao().getPendingCreationRecords()
             for (record in pendingRecords) {
+                var uploadedReceiptUrl: String? = record.receiptUrl
+                if (uploadedReceiptUrl == null && !record.localReceiptPath.isNullOrBlank()) {
+                    val f = File(record.localReceiptPath)
+                    if (f.exists()) {
+                        val upResp = api.uploadCutReceipt(ReceiptImageUtils.fileToMultipart(f))
+                        if (upResp.isSuccessful && upResp.body() != null) {
+                            uploadedReceiptUrl = upResp.body()!!.url
+                        }
+                    }
+                }
+
                 val createDto = ServiceRecordCreateDto(
                     serviceId = record.serviceId,
                     barberId = record.barberId,
@@ -55,7 +68,8 @@ class SyncWorker(
                     customerPhone = record.customerPhone,
                     collectedBy = record.collectedBy,
                     paymentMethod = record.paymentMethod,
-                    notes = record.notes
+                    notes = record.notes,
+                    receiptUrl = uploadedReceiptUrl
                 )
 
                 val response = api.createServiceRecord(createDto)
@@ -63,6 +77,8 @@ class SyncWorker(
                     val remote = response.body()!!
                     val updated = record.copy(
                         remoteId = remote.id,
+                        receiptUrl = remote.receiptUrl ?: uploadedReceiptUrl,
+                        localReceiptPath = null,
                         syncStatus = SyncStatus.SYNCED
                     )
                     db.serviceRecordDao().updateRecord(updated)
@@ -71,6 +87,26 @@ class SyncWorker(
                     sessionManager.clearSession()
                     db.serviceRecordDao().purgePendingRecords()
                     return Result.failure()
+                }
+            }
+
+            // 2B. SUBIR COMPROBANTES PENDIENTES EN CORTES YA SINCRONIZADOS
+            val pendingReceipts = db.serviceRecordDao().getPendingReceiptUploadRecords()
+            for (rec in pendingReceipts) {
+                val f = rec.localReceiptPath?.let { File(it) }
+                if (rec.remoteId != null && f != null && f.exists()) {
+                    val upResp = api.attachCutReceipt(rec.remoteId, ReceiptImageUtils.fileToMultipart(f))
+                    if (upResp.isSuccessful && upResp.body() != null) {
+                        db.serviceRecordDao().updateRecord(
+                            rec.copy(
+                                receiptUrl = upResp.body()!!.receiptUrl,
+                                localReceiptPath = null
+                            )
+                        )
+                    } else if (upResp.code() == 403) {
+                        // El barbero ya no puede sobrescribir; limpiar pendiente local
+                        db.serviceRecordDao().updateRecord(rec.copy(localReceiptPath = null))
+                    }
                 }
             }
 
@@ -190,6 +226,7 @@ class SyncWorker(
                         collectedBy = it.collectedBy,
                         paymentMethod = it.paymentMethod,
                         notes = it.notes,
+                        receiptUrl = it.receiptUrl,
                         createdAt = it.createdAt,
                         isSettled = it.isSettled,
                         barberEarnings = it.barberEarnings,

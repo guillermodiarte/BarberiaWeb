@@ -7,7 +7,9 @@ import com.barbershop.crm.core.database.entities.*
 import com.barbershop.crm.core.network.NetworkClient
 import com.barbershop.crm.core.session.SessionManager
 import com.barbershop.crm.core.sync.SyncWorker
+import com.barbershop.crm.core.utils.ReceiptImageUtils
 import com.barbershop.crm.data.models.*
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
@@ -220,6 +222,7 @@ class BarberRepository(private val context: Context) {
                         collectedBy = it.collectedBy,
                         paymentMethod = it.paymentMethod,
                         notes = it.notes,
+                        receiptUrl = it.receiptUrl,
                         createdAt = it.createdAt,
                         isSettled = it.isSettled,
                         barberEarnings = it.barberEarnings,
@@ -303,7 +306,8 @@ class BarberRepository(private val context: Context) {
         customerPhone: String?,
         collectedBy: String,
         paymentMethod: String,
-        notes: String?
+        notes: String?,
+        localReceiptPath: String? = null
     ): Long {
         val nowFormatted = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
 
@@ -319,6 +323,7 @@ class BarberRepository(private val context: Context) {
             collectedBy = collectedBy,
             paymentMethod = paymentMethod,
             notes = notes,
+            localReceiptPath = localReceiptPath,
             createdAt = nowFormatted,
             syncStatus = SyncStatus.PENDING_CREATION
         )
@@ -326,6 +331,35 @@ class BarberRepository(private val context: Context) {
         val localId = db.serviceRecordDao().insertRecord(record)
         triggerSync()
         return localId
+    }
+
+    suspend fun attachReceiptToRecord(record: ServiceRecordEntity, imageFile: File): Result<Unit> {
+        if (record.remoteId == null) {
+            db.serviceRecordDao().updateRecord(record.copy(localReceiptPath = imageFile.absolutePath))
+            triggerSync()
+            return Result.success(Unit)
+        }
+        return try {
+            val part = ReceiptImageUtils.fileToMultipart(imageFile)
+            val resp = networkClient.getApiService().attachCutReceipt(record.remoteId, part)
+            if (resp.isSuccessful && resp.body() != null) {
+                val remote = resp.body()!!
+                db.serviceRecordDao().updateRecord(
+                    record.copy(receiptUrl = remote.receiptUrl, localReceiptPath = null)
+                )
+                Result.success(Unit)
+            } else if (resp.code() == 403) {
+                Result.failure(Exception("Este corte ya tiene un comprobante. Solo un administrador puede modificarlo."))
+            } else {
+                db.serviceRecordDao().updateRecord(record.copy(localReceiptPath = imageFile.absolutePath))
+                triggerSync()
+                Result.success(Unit)
+            }
+        } catch (e: Exception) {
+            db.serviceRecordDao().updateRecord(record.copy(localReceiptPath = imageFile.absolutePath))
+            triggerSync()
+            Result.success(Unit)
+        }
     }
 
     // Clientes

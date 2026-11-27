@@ -17,7 +17,7 @@ import com.barbershop.crm.core.database.entities.*
         ExpenseEntity::class,
         BookingEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

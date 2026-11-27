@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/media", tags=["Gestión de Medios & Galería"])
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 UPLOADS_ROOT = os.getenv("UPLOADS_DIR", os.path.join(BASE_DIR, "uploads"))
 
-VALID_FOLDERS = ["banner", "galeria", "equipo", "videos", "sistema", "favicon"]
+VALID_FOLDERS = ["banner", "galeria", "equipo", "videos", "sistema", "favicon", "comprobantes"]
 
 # Max dimension widths per folder for WebP optimization
 MAX_WIDTHS = {
@@ -24,7 +24,8 @@ MAX_WIDTHS = {
     "galeria": 1400,
     "equipo": 800,
     "sistema": 512,
-    "videos": 1920
+    "videos": 1920,
+    "comprobantes": 1400
 }
 
 def sanitize_filename(name: str) -> str:

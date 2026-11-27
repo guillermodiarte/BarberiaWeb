@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Scissors, Plus, Trash2, Filter, Search, CheckCircle2, 
-  AlertCircle, User, CreditCard, X, UserPlus, Calendar, Sparkles, Gift, Pencil
+  AlertCircle, User, CreditCard, X, UserPlus, Calendar, Sparkles, Gift, Pencil,
+  Camera, Image as ImageIcon, Eye, Upload
 } from 'lucide-react';
 import { api } from '../../api';
 import { Modal, ConfirmDialog } from '../../components/common/Modal';
@@ -58,6 +59,12 @@ export const CutsTab = ({ user }) => {
   const [submitting, setSubmitting] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [modalError, setModalError] = useState('');
+
+  // Receipt image upload (create + quick attach + viewer)
+  const [receiptFile, setReceiptFile] = useState(null);
+  const [receiptPreview, setReceiptPreview] = useState('');
+  const [viewingReceiptUrl, setViewingReceiptUrl] = useState('');
+  const [uploadingReceiptId, setUploadingReceiptId] = useState(null);
 
   // Modal edit record
   const [editingRecord, setEditingRecord] = useState(null);
@@ -182,6 +189,8 @@ export const CutsTab = ({ user }) => {
     setCustomerSearchQuery('');
     setCustomerSearchResults([]);
     setIsNewCustomerMode(false);
+    setReceiptFile(null);
+    setReceiptPreview('');
     setIsModalOpen(true);
   };
 
@@ -212,6 +221,14 @@ export const CutsTab = ({ user }) => {
         finalPaymentMethod = 'transfer_shop';
       }
 
+      let uploadedReceiptUrl = null;
+      if (receiptFile) {
+        const uploadRes = await api.uploadCutReceipt(receiptFile);
+        if (uploadRes && uploadRes.url) {
+          uploadedReceiptUrl = uploadRes.url;
+        }
+      }
+
       const payload = {
         service_id: parseInt(serviceId),
         barber_id: parseInt(barberId),
@@ -223,11 +240,14 @@ export const CutsTab = ({ user }) => {
         collected_by: finalCollectedBy,
         payment_method: finalPaymentMethod,
         redeem_free_cut: redeemFreeCut,
-        notes: notes || null
+        notes: notes || null,
+        receipt_url: uploadedReceiptUrl
       };
 
       await api.createServiceRecord(payload);
       setIsModalOpen(false);
+      setReceiptFile(null);
+      setReceiptPreview('');
       loadData();
     } catch (err) {
       setModalError(err.message || 'Error al registrar corte');
@@ -315,6 +335,19 @@ export const CutsTab = ({ user }) => {
       setEditModalError(err.message || 'Error al actualizar registro');
     } finally {
       setEditSubmitting(false);
+    }
+  };
+
+  const handleQuickAttachReceipt = async (recordId, file) => {
+    if (!file) return;
+    setUploadingReceiptId(recordId);
+    try {
+      await api.attachCutReceipt(recordId, file);
+      await loadData();
+    } catch (err) {
+      alert(err.message || 'Error al subir la foto del comprobante');
+    } finally {
+      setUploadingReceiptId(null);
     }
   };
 
@@ -536,13 +569,13 @@ export const CutsTab = ({ user }) => {
       <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
         {/* Table header - hidden on mobile, shown md+ */}
         <div className="hidden md:grid bg-slate-950 border-b border-slate-800 text-[11px] uppercase tracking-wider text-slate-400 font-semibold px-4 py-3"
-          style={{ gridTemplateColumns: isAdmin ? '110px 1.5fr 1fr 1fr 1fr 70px' : '110px 2fr 1fr 1fr' }}>
+          style={{ gridTemplateColumns: isAdmin ? '110px 1.5fr 1fr 1fr 1fr 120px' : '110px 1.8fr 1fr 1fr 120px' }}>
           <div>Fecha</div>
           <div>Servicio / Cliente</div>
           <div>Barbero</div>
           <div>Cobro</div>
           {isAdmin && <div>Deuda / Estado</div>}
-          {isAdmin && <div className="text-right">Acciones</div>}
+          <div className="text-right">Comprobante / Acc.</div>
         </div>
 
         <div className="divide-y divide-slate-800/50">
@@ -610,32 +643,65 @@ export const CutsTab = ({ user }) => {
                           }`}>{r.is_settled ? 'Liquidado' : 'Pendiente'}</span>
                         </>
                       )}
-                      {isAdmin && (
-                        <div className="ml-auto flex items-center space-x-1">
+                      <div className="ml-auto flex items-center space-x-1">
+                        {r.receipt_url && (
                           <button
-                            onClick={() => handleOpenEdit(r)}
-                            className="p-1 text-slate-400 hover:text-amber-400 rounded-lg transition-colors"
-                            title="Editar corte o asignar cliente"
+                            onClick={() => setViewingReceiptUrl(r.receipt_url)}
+                            className="px-2 py-1 bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 rounded-lg text-[10px] font-bold flex items-center space-x-1"
+                            title="Ver comprobante"
                           >
-                            <Pencil className="w-3.5 h-3.5" />
+                            <Eye className="w-3 h-3" />
+                            <span>Ver Foto</span>
                           </button>
-                          {!r.is_settled && (
+                        )}
+                        {(!r.receipt_url || isAdmin) && (
+                          <label
+                            className="px-2 py-1 bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30 rounded-lg text-[10px] font-bold flex items-center space-x-1 cursor-pointer"
+                            title={r.receipt_url ? 'Cambiar foto de comprobante' : 'Subir foto de comprobante'}
+                          >
+                            <Camera className="w-3 h-3" />
+                            <span>{uploadingReceiptId === r.id ? 'Subiendo...' : r.receipt_url ? 'Cambiar' : 'Subir Foto'}</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              capture="environment"
+                              className="hidden"
+                              disabled={uploadingReceiptId === r.id}
+                              onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                if (f) handleQuickAttachReceipt(r.id, f);
+                                e.target.value = '';
+                              }}
+                            />
+                          </label>
+                        )}
+                        {isAdmin && (
+                          <>
                             <button
-                              onClick={() => setDeleteId(r.id)}
-                              className="p-1 text-slate-500 hover:text-rose-400 rounded-lg transition-colors"
-                              title="Eliminar corte"
+                              onClick={() => handleOpenEdit(r)}
+                              className="p-1 text-slate-400 hover:text-amber-400 rounded-lg transition-colors"
+                              title="Editar corte o asignar cliente"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              <Pencil className="w-3.5 h-3.5" />
                             </button>
-                          )}
-                        </div>
-                      )}
+                            {!r.is_settled && (
+                              <button
+                                onClick={() => setDeleteId(r.id)}
+                                className="p-1 text-slate-500 hover:text-rose-400 rounded-lg transition-colors"
+                                title="Eliminar corte"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
 
                   {/* Desktop layout: grid columns */}
                   <div className="hidden md:grid items-center gap-3"
-                    style={{ gridTemplateColumns: isAdmin ? '110px 1.5fr 1fr 1fr 1fr 70px' : '110px 2fr 1fr 1fr' }}>
+                    style={{ gridTemplateColumns: isAdmin ? '110px 1.5fr 1fr 1fr 1fr 120px' : '110px 1.8fr 1fr 1fr 120px' }}>
                     {/* Fecha */}
                     <div className="text-xs font-mono text-slate-400">
                       <span className="text-white font-semibold">{dateStr}</span>
@@ -698,27 +764,58 @@ export const CutsTab = ({ user }) => {
                       </div>
                     )}
 
-                    {/* Acciones */}
-                    {isAdmin && (
-                      <div className="flex items-center justify-end space-x-1">
+                    {/* Acciones + Comprobante */}
+                    <div className="flex items-center justify-end space-x-1">
+                      {r.receipt_url && (
                         <button
-                          onClick={() => handleOpenEdit(r)}
-                          className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-slate-800 rounded-lg transition-colors"
-                          title="Editar corte o asociar cliente"
+                          onClick={() => setViewingReceiptUrl(r.receipt_url)}
+                          className="p-1.5 text-cyan-400 hover:bg-cyan-500/10 rounded-lg transition-colors"
+                          title="Ver foto de comprobante"
                         >
-                          <Pencil className="w-3.5 h-3.5" />
+                          <Eye className="w-4 h-4" />
                         </button>
-                        {!r.is_settled && (
+                      )}
+                      {(!r.receipt_url || isAdmin) && (
+                        <label
+                          className="p-1.5 text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors cursor-pointer"
+                          title={r.receipt_url ? 'Cambiar foto de comprobante' : 'Subir foto de comprobante'}
+                        >
+                          <Camera className="w-4 h-4" />
+                          <input
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            className="hidden"
+                            disabled={uploadingReceiptId === r.id}
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) handleQuickAttachReceipt(r.id, f);
+                              e.target.value = '';
+                            }}
+                          />
+                        </label>
+                      )}
+                      {isAdmin && (
+                        <>
                           <button
-                            onClick={() => setDeleteId(r.id)}
-                            className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors"
-                            title="Eliminar corte"
+                            onClick={() => handleOpenEdit(r)}
+                            className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-slate-800 rounded-lg transition-colors"
+                            title="Editar corte o asociar cliente"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Pencil className="w-3.5 h-3.5" />
                           </button>
-                        )}
-                      </div>
-                    )}
+                          {!r.is_settled && (
+                            <button
+                              onClick={() => setDeleteId(r.id)}
+                              className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors"
+                              title="Eliminar corte"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -1147,6 +1244,49 @@ export const CutsTab = ({ user }) => {
             </div>
           )}
 
+          {/* Foto / Comprobante de Pago (Opcional) */}
+          <div className="p-3.5 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center space-x-1.5">
+                <Camera className="w-3.5 h-3.5 text-amber-400" />
+                <span>Comprobante / Foto (Opcional)</span>
+              </label>
+              {receiptPreview && (
+                <button
+                  type="button"
+                  onClick={() => { setReceiptFile(null); setReceiptPreview(''); }}
+                  className="text-[11px] text-rose-400 hover:text-rose-300 font-semibold"
+                >
+                  Quitar foto
+                </button>
+              )}
+            </div>
+            {receiptPreview ? (
+              <div className="flex items-center space-x-3">
+                <img src={receiptPreview} alt="Vista previa" className="w-16 h-16 object-cover rounded-lg border border-slate-700" />
+                <span className="text-xs text-emerald-400 font-semibold truncate">{receiptFile?.name}</span>
+              </div>
+            ) : (
+              <label className="flex items-center justify-center space-x-2 py-2.5 px-3 bg-slate-900 hover:bg-slate-800 border border-dashed border-slate-700 rounded-xl cursor-pointer text-xs text-slate-300 font-semibold transition-colors">
+                <Upload className="w-4 h-4 text-amber-400" />
+                <span>Sacar foto o elegir comprobante</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) {
+                      setReceiptFile(f);
+                      setReceiptPreview(URL.createObjectURL(f));
+                    }
+                  }}
+                />
+              </label>
+            )}
+          </div>
+
           {/* Real-time Calculation Preview Card */}
           <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-1.5 text-xs">
             <div className="flex justify-between text-slate-300">
@@ -1449,6 +1589,35 @@ export const CutsTab = ({ user }) => {
               </button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {/* Modal visor de comprobante */}
+      {viewingReceiptUrl && (
+        <Modal
+          isOpen={true}
+          onClose={() => setViewingReceiptUrl('')}
+          title="Comprobante de Pago / Foto"
+          maxWidth="max-w-lg"
+        >
+          <div className="space-y-4">
+            <div className="bg-slate-950 rounded-xl border border-slate-800 p-2 flex items-center justify-center">
+              <img
+                src={viewingReceiptUrl}
+                alt="Comprobante de corte"
+                className="max-h-[70vh] w-auto rounded-lg object-contain"
+              />
+            </div>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setViewingReceiptUrl('')}
+                className="px-4 py-2 bg-slate-800 text-slate-200 hover:text-white rounded-xl text-xs font-semibold"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
         </Modal>
       )}
 

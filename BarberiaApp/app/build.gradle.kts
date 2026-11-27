@@ -87,6 +87,9 @@ dependencies {
     // QR Code Scanner (Zero-config cámara)
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
 
+    // Carga de imágenes (Comprobantes)
+    implementation("io.coil-kt:coil-compose:2.6.0")
+
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 

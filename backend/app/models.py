@@ -110,6 +110,7 @@ class ServiceRecord(Base):
 
     loyalty_points_awarded = Column(Integer, default=0, nullable=False)
     notes = Column(Text, nullable=True)
+    receipt_url = Column(String(500), nullable=True)
     
     is_settled = Column(Boolean, default=False, nullable=False)
     settlement_id = Column(Integer, ForeignKey("cash_closings.id"), nullable=True)

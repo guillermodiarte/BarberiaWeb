@@ -444,6 +444,8 @@ fun AppNavHost(
                 composable(Screen.Cortes.route) {
                     CortesScreen(
                         repository = repository,
+                        isAdmin = isAdmin,
+                        tenantUrl = currentTenantUrl,
                         onNavigateToNuevo = { navController.navigate(Screen.NuevoCorte.route) },
                         onNavigateToHistorial = { navController.navigate(Screen.Historial.route) }
                     )
@@ -552,6 +554,8 @@ fun AppNavHost(
                 composable(Screen.Historial.route) {
                     HistorialScreen(
                         repository = repository,
+                        isAdmin = isAdmin,
+                        tenantUrl = currentTenantUrl,
                         onNavigateBack = { navController.popBackStack() }
                     )
                 }

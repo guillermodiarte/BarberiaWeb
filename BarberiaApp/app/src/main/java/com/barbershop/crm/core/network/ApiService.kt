@@ -1,6 +1,7 @@
 package com.barbershop.crm.core.network
 
 import com.barbershop.crm.data.models.*
+import okhttp3.MultipartBody
 import retrofit2.Response
 import retrofit2.http.*
 
@@ -48,6 +49,17 @@ interface ApiService {
 
     @DELETE("api/service-records/{id}")
     suspend fun deleteServiceRecord(@Path("id") id: Int): Response<Unit>
+
+    @Multipart
+    @POST("api/service-records/upload-receipt")
+    suspend fun uploadCutReceipt(@Part file: MultipartBody.Part): Response<UploadReceiptResponse>
+
+    @Multipart
+    @POST("api/service-records/{id}/receipt")
+    suspend fun attachCutReceipt(
+        @Path("id") id: Int,
+        @Part file: MultipartBody.Part
+    ): Response<ServiceRecordDto>
 
     // Clientes & Fidelización
     @GET("api/customers")

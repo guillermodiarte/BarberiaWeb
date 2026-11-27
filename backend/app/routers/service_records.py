@@ -1,13 +1,14 @@
 import json
 from datetime import datetime
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
 from sqlalchemy.orm import Session
 from backend.app.database import get_db
 from backend.app.models import ServiceRecord, Service, User, Customer, Product, LoyaltyTransaction, SystemSetting
 from backend.app.schemas import ServiceRecordCreate, ServiceRecordUpdate, ServiceRecordOut
 from backend.app.auth import require_barber_or_admin, require_admin, get_current_user
 from backend.app.utils import phones_match
+from backend.app.routers.media import optimize_image
 
 router = APIRouter(prefix="/api/service-records", tags=["Registro de Cortes (Core CRM)"])
 
@@ -197,6 +198,7 @@ def record_service_cut(
         shop_earnings=shop_earnings,
         loyalty_points_awarded=points_awarded,
         notes=final_notes,
+        receipt_url=record_in.receipt_url,
         is_settled=False,
         created_at=datetime.utcnow()
     )
@@ -346,9 +348,11 @@ def update_service_record(
         record.customer_id = new_customer_id
         record.loyalty_points_awarded = new_points
 
-    # 3. Update notes
+    # 3. Update notes & receipt_url (admin can update receipt_url anytime)
     if record_in.notes is not None:
         record.notes = record_in.notes
+    if record_in.receipt_url is not None:
+        record.receipt_url = record_in.receipt_url if record_in.receipt_url.strip() else None
 
     # 4. If record is not settled, allow modifying service, barber, price, payment
     if not record.is_settled:
@@ -429,3 +433,73 @@ def delete_service_record(
     db.delete(record)
     db.commit()
     return {"message": "Registro eliminado exitosamente"}
+
+
+@router.post("/upload-receipt")
+async def upload_cut_receipt(
+    file: UploadFile = File(...),
+    current_user: User = Depends(require_barber_or_admin)
+):
+    """Sube y optimiza una imagen de comprobante de pago para asociar al registrar un corte."""
+    file_bytes = await file.read()
+    if not file_bytes:
+        raise HTTPException(status_code=400, detail="El archivo está vacío.")
+
+    try:
+        filename, size_kb = optimize_image(file_bytes, "comprobantes", file.filename or "comprobante.jpg")
+        return {
+            "success": True,
+            "url": f"/uploads/comprobantes/{filename}",
+            "size_kb": size_kb
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al procesar la imagen: {str(e)}")
+
+
+@router.post("/{record_id}/receipt", response_model=ServiceRecordOut)
+async def attach_cut_receipt(
+    record_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_barber_or_admin)
+):
+    """
+    Adjunta o reemplaza la foto de comprobante de un corte existente.
+    - Barbero: solo en sus propios cortes y únicamente si aún no tiene imagen cargada.
+    - Admin / SuperAdmin: puede agregar o modificar la imagen cuantas veces quiera.
+    """
+    record = db.query(ServiceRecord).filter(ServiceRecord.id == record_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="Registro de corte no encontrado")
+
+    if current_user.role == "barber":
+        if record.barber_id != current_user.id:
+            raise HTTPException(status_code=403, detail="No tienes permiso para modificar cortes de otro barbero")
+        if record.receipt_url:
+            raise HTTPException(
+                status_code=403,
+                detail="Este corte ya tiene un comprobante cargado. Solo un administrador puede modificarlo."
+            )
+
+    file_bytes = await file.read()
+    if not file_bytes:
+        raise HTTPException(status_code=400, detail="El archivo está vacío.")
+
+    try:
+        filename, _ = optimize_image(file_bytes, "comprobantes", file.filename or "comprobante.jpg")
+        record.receipt_url = f"/uploads/comprobantes/{filename}"
+        db.commit()
+        db.refresh(record)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al procesar la imagen: {str(e)}")
+
+    out = ServiceRecordOut.model_validate(record)
+    out.service_name = record.service.name if record.service else "Servicio"
+    out.barber_name = record.barber.full_name if record.barber else "Barbero"
+    if record.customer:
+        out.customer_name = record.customer.full_name
+        out.customer_phone = record.customer.phone
+    out.who_owes_whom = calculate_who_owes_whom(
+        record.collected_by, record.payment_method, record.barber_earnings, record.shop_earnings, out.barber_name
+    )
+    return out

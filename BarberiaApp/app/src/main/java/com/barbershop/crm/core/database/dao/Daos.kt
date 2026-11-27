@@ -15,6 +15,9 @@ interface ServiceRecordDao {
     @Query("SELECT * FROM service_records WHERE syncStatus = 'PENDING_CREATION'")
     suspend fun getPendingCreationRecords(): List<ServiceRecordEntity>
 
+    @Query("SELECT * FROM service_records WHERE remoteId IS NOT NULL AND localReceiptPath IS NOT NULL")
+    suspend fun getPendingReceiptUploadRecords(): List<ServiceRecordEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRecord(record: ServiceRecordEntity): Long
 

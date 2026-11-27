@@ -25,6 +25,8 @@ data class ServiceRecordEntity(
     val collectedBy: String, // barber, admin
     val paymentMethod: String, // cash, transfer_barber, transfer_shop
     val notes: String? = null,
+    val receiptUrl: String? = null,
+    val localReceiptPath: String? = null,
     val createdAt: String,
     val isSettled: Boolean = false,
     val barberEarnings: Double = 0.0,

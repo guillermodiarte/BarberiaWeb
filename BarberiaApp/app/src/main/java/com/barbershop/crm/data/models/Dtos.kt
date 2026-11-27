@@ -71,6 +71,7 @@ data class ServiceRecordDto(
     @SerializedName("shop_earnings") val shopEarnings: Double,
     @SerializedName("loyalty_points_awarded") val loyaltyPointsAwarded: Int,
     val notes: String?,
+    @SerializedName("receipt_url") val receiptUrl: String? = null,
     @SerializedName("is_settled") val isSettled: Boolean,
     @SerializedName("created_at") val createdAt: String,
     @SerializedName("service_name") val serviceName: String?,
@@ -86,7 +87,13 @@ data class ServiceRecordCreateDto(
     @SerializedName("customer_phone") val customerPhone: String?,
     @SerializedName("collected_by") val collectedBy: String,
     @SerializedName("payment_method") val paymentMethod: String,
-    val notes: String?
+    val notes: String?,
+    @SerializedName("receipt_url") val receiptUrl: String? = null
+)
+
+data class UploadReceiptResponse(
+    val success: Boolean,
+    val url: String
 )
 
 data class CustomerDto(

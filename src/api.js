@@ -108,6 +108,16 @@ export const api = {
   createServiceRecord: (data) => apiRequest('/service-records', { method: 'POST', body: JSON.stringify(data) }),
   updateServiceRecord: (id, data) => apiRequest(`/service-records/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteServiceRecord: (id) => apiRequest(`/service-records/${id}`, { method: 'DELETE' }),
+  uploadCutReceipt: (file) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return apiRequest('/service-records/upload-receipt', { method: 'POST', body: fd });
+  },
+  attachCutReceipt: (id, file) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return apiRequest(`/service-records/${id}/receipt`, { method: 'POST', body: fd });
+  },
 
   // Inventory & Stock
   getInventory: (params = {}) => {

@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from backend.app.database import engine, Base, SessionLocal
+from sqlalchemy import inspect as sa_inspect, text
 from backend.app.routers import (
     auth, services, barbers, service_records, inventory,
     product_sales, expenses, cash_closing, customers,
@@ -18,6 +19,17 @@ from backend.app.routers.settings import ensure_default_settings
 
 # Create DB schema tables
 Base.metadata.create_all(bind=engine)
+
+# Auto-migrate new columns safely if DB already exists
+try:
+    inspector = sa_inspect(engine)
+    cols = [c["name"] for c in inspector.get_columns("service_records")]
+    if "receipt_url" not in cols:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE service_records ADD COLUMN receipt_url VARCHAR(500)"))
+            conn.commit()
+except Exception as e:
+    print(f"[DB Migration Warning] receipt_url: {e}")
 
 # Ensure default initial settings
 with SessionLocal() as db:

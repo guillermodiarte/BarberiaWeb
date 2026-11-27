@@ -1,5 +1,12 @@
 package com.barbershop.crm.ui.screens.cortes
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -10,23 +17,33 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import coil.compose.AsyncImage
 import com.barbershop.crm.core.database.entities.CustomerEntity
 import com.barbershop.crm.core.database.entities.ServiceEntity
 import com.barbershop.crm.core.session.SessionManager
+import com.barbershop.crm.core.utils.ReceiptImageUtils
 import com.barbershop.crm.core.utils.formatPrice
 import com.barbershop.crm.data.repository.BarberRepository
 import com.barbershop.crm.ui.theme.*
 import kotlinx.coroutines.launch
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,6 +67,45 @@ fun NuevoCorteScreen(
     var paymentMethod by remember { mutableStateOf("cash") } // cash, transfer_barber, transfer_shop
     var notes by remember { mutableStateOf("") }
     var submitting by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    var selectedReceiptFile by remember { mutableStateOf<File?>(null) }
+    var pendingCameraFile by remember { mutableStateOf<File?>(null) }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        val file = pendingCameraFile
+        if (success && file != null && file.exists() && file.length() > 0) {
+            selectedReceiptFile = file
+        }
+        pendingCameraFile = null
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            val (file, uri) = ReceiptImageUtils.createCameraOutputFileAndUri(context)
+            pendingCameraFile = file
+            cameraLauncher.launch(uri)
+        } else {
+            Toast.makeText(context, "Se requiere permiso de cámara para sacar la foto", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            val copied = ReceiptImageUtils.copyUriToInternalFile(context, uri)
+            if (copied != null) {
+                selectedReceiptFile = copied
+            } else {
+                Toast.makeText(context, "No se pudo leer la imagen seleccionada", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     LaunchedEffect(services) {
         if (selectedService == null && services.isNotEmpty()) {
@@ -342,6 +398,96 @@ fun NuevoCorteScreen(
                 shape = RoundedCornerShape(12.dp)
             )
 
+            // COMPROBANTE / FOTO OPCIONAL
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Slate900),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Comprobante / Foto (Opcional)",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = Slate50
+                            )
+                            Text(
+                                text = if (paymentMethod != "cash") "Recomendado para transferencias" else "Puedes adjuntarla ahora o luego",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (paymentMethod != "cash") Amber400 else Slate400
+                            )
+                        }
+                        if (selectedReceiptFile != null) {
+                            IconButton(onClick = { selectedReceiptFile = null }) {
+                                Icon(Icons.Default.Close, contentDescription = "Quitar foto", tint = Rose500)
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    if (selectedReceiptFile != null) {
+                        AsyncImage(
+                            model = selectedReceiptFile,
+                            contentDescription = "Vista previa del comprobante",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(160.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                        )
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = {
+                                    val hasCam = ContextCompat.checkSelfPermission(
+                                        context,
+                                        Manifest.permission.CAMERA
+                                    ) == PackageManager.PERMISSION_GRANTED
+                                    if (hasCam) {
+                                        val (file, uri) = ReceiptImageUtils.createCameraOutputFileAndUri(context)
+                                        pendingCameraFile = file
+                                        cameraLauncher.launch(uri)
+                                    } else {
+                                        permissionLauncher.launch(Manifest.permission.CAMERA)
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Amber400)
+                            ) {
+                                Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Sacar Foto", fontWeight = FontWeight.Bold)
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    galleryLauncher.launch(
+                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                    )
+                                },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Cyan400)
+                            ) {
+                                Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Galería", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
 
             // BOTÓN GUARDAR (OFFLINE-FIRST)
@@ -370,7 +516,8 @@ fun NuevoCorteScreen(
                             customerPhone = customerPhone.ifBlank { null },
                             collectedBy = "barber",
                             paymentMethod = paymentMethod,
-                            notes = notes.ifBlank { null }
+                            notes = notes.ifBlank { null },
+                            localReceiptPath = selectedReceiptFile?.absolutePath
                         )
 
                         submitting = false

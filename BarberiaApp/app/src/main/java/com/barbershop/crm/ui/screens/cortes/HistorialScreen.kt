@@ -1,5 +1,6 @@
 package com.barbershop.crm.ui.screens.cortes
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,21 +13,29 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.barbershop.crm.core.database.entities.SyncStatus
+import com.barbershop.crm.core.session.SessionManager
 import com.barbershop.crm.core.utils.formatPrice
 import com.barbershop.crm.data.repository.BarberRepository
 import com.barbershop.crm.ui.theme.*
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistorialScreen(
     repository: BarberRepository,
+    isAdmin: Boolean = false,
+    tenantUrl: String = SessionManager.DEFAULT_TENANT_URL,
     onNavigateBack: () -> Unit
 ) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     val records by repository.getLocalRecords().collectAsState(initial = emptyList())
     var isRefreshing by remember { mutableStateOf(false) }
+    var uploadingRecordId by remember { mutableStateOf<Long?>(null) }
 
     LaunchedEffect(Unit) {
         isRefreshing = true
@@ -165,6 +174,22 @@ fun HistorialScreen(
                                         }
                                     }
                                 }
+                                ReceiptActionRow(
+                                    record = record,
+                                    isAdmin = isAdmin,
+                                    tenantUrl = tenantUrl,
+                                    isUploading = uploadingRecordId == record.localId,
+                                    onAttachFile = { file ->
+                                        uploadingRecordId = record.localId
+                                        coroutineScope.launch {
+                                            val res = repository.attachReceiptToRecord(record, file)
+                                            uploadingRecordId = null
+                                            res.onFailure { err ->
+                                                Toast.makeText(context, err.message ?: "Error al subir foto", Toast.LENGTH_LONG).show()
+                                            }
+                                        }
+                                    }
+                                )
                             }
                         }
                     }

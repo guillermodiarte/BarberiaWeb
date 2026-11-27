@@ -171,6 +171,7 @@ class ServiceRecordCreate(BaseModel):
     payment_method: str  # "cash" | "transfer_shop" | "transfer_barber"
     redeem_free_cut: Optional[bool] = False  # Redeem points for a 100% free cut
     notes: Optional[str] = None
+    receipt_url: Optional[str] = None
 
 class ServiceRecordUpdate(BaseModel):
     service_id: Optional[int] = None
@@ -182,6 +183,7 @@ class ServiceRecordUpdate(BaseModel):
     collected_by: Optional[str] = None
     payment_method: Optional[str] = None
     notes: Optional[str] = None
+    receipt_url: Optional[str] = None
 
 class ServiceRecordOut(BaseModel):
     id: int
@@ -198,6 +200,7 @@ class ServiceRecordOut(BaseModel):
     shop_earnings: float
     loyalty_points_awarded: int
     notes: Optional[str] = None
+    receipt_url: Optional[str] = None
     is_settled: bool
     settlement_id: Optional[int] = None
     created_at: datetime
